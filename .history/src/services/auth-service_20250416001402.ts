@@ -1,0 +1,80 @@
+import apiClient from "../lib/api-client";
+import type { LoginFormValues, RegisterFormValues } from "../lib/schemas";
+
+export const authService = {
+  async login(data: LoginFormValues) {
+    const response = await apiClient.post("/auth/login", data);
+    // Calculate expiry times from the response or use defaults
+    const accessTokenExpiry = Date.now() + 24 * 60 * 60 * 1000; // 1 day
+    const refreshTokenExpiry = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7 days
+
+    return {
+      data: {
+        ...response.data,
+        accessTokenExpiry,
+        refreshTokenExpiry,
+      },
+    };
+  },
+
+  async register(data: RegisterFormValues) {
+    const response = await apiClient.post("/auth/register", {
+      name: data.name,
+      email: data.email,
+      role: data.role,
+      password: data.password,
+    });
+
+    // If the register endpoint returns tokens, add expiry times
+    if (response.data?.accessToken) {
+      const accessTokenExpiry = Date.now() + 24 * 60 * 60 * 1000; // 1 day
+      const refreshTokenExpiry = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7 days
+
+      response.data.accessTokenExpiry = accessTokenExpiry;
+      response.data.refreshTokenExpiry = refreshTokenExpiry;
+    }
+
+    return response;
+  },
+
+  async refreshToken(refreshToken: string) {
+    const response = await apiClient.post("/auth/refresh-token", {
+      refreshToken,
+    });
+
+    // Calculate new expiry times
+    const accessTokenExpiry = Date.now() + 24 * 60 * 60 * 1000; // 1 day
+    const refreshTokenExpiry = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7 days
+
+    return {
+      data: {
+        ...response.data,
+        accessTokenExpiry,
+        refreshTokenExpiry,
+      },
+    };
+  },
+
+  async logout() {
+    const response = await apiClient.post("/auth/logout");
+    return response.data;
+  },
+
+  async forgotPassword(email: string) {
+    const response = await apiClient.post("/auth/forgot-password", { email });
+    return response.data;
+  },
+
+  async resetPassword(token: string, newPassword: string) {
+    const response = await apiClient.post("/auth/reset-password", {
+      token,
+      newPassword,
+    });
+    return response.data;
+  },
+
+  async verifyEmail(token: string) {
+    const response = await apiClient.post("/auth/verify-email", { token });
+    return response.data;
+  },
+};
