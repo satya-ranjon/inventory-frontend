@@ -5,7 +5,6 @@ import { RegisterForm } from "./components/auth/register-form";
 import { CustomersPage } from "./pages/customers/customers-page";
 import { CustomerFormPage } from "./pages/customers/customer-form-page";
 import { ItemsPage } from "./pages/items/items-page";
-import { ItemFormPage } from "./pages/items/item-form-page";
 import { SalesPage } from "./pages/sales/sales-page";
 import { SalesOrderFormPage } from "./pages/sales/sales-order-form-page";
 import { InitUploadThing } from "./components/ui/init-uploadthing";
@@ -52,28 +51,12 @@ function App() {
           }
         />
 
-        {/* Item routes */}
+        {/* Item routes - simplified to just the list page */}
         <Route
           path="/dashboard/items"
           element={
             <DashboardLayout>
               <ItemsPage />
-            </DashboardLayout>
-          }
-        />
-        <Route
-          path="/dashboard/items/new"
-          element={
-            <DashboardLayout>
-              <ItemFormPage />
-            </DashboardLayout>
-          }
-        />
-        <Route
-          path="/dashboard/items/:id"
-          element={
-            <DashboardLayout>
-              <ItemFormPage />
             </DashboardLayout>
           }
         />

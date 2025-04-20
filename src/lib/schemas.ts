@@ -37,105 +37,45 @@ export type RegisterFormValues = z.infer<typeof registerSchema>;
 // Item schema
 export const itemSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  sku: z.string().optional(),
-  isReturnable: z.boolean().optional(),
-  dimensions: z
-    .object({
-      length: z.number().optional(),
-      width: z.number().optional(),
-      height: z.number().optional(),
-      unit: z.string().optional(),
-    })
-    .optional(),
-  weight: z
-    .object({
-      value: z.number().optional(),
-      unit: z.string().optional(),
-    })
-    .optional(),
-  manufacturer: z.string().optional(),
-  brand: z.string().optional(),
-  upc: z.string().optional(),
-  ean: z.string().optional(),
-  isbn: z.string().optional(),
-  mpn: z.string().optional(),
-  sellingPrice: z.number().min(0, "Selling price must be at least 0"),
-  salesAccount: z.string(),
-  description: z.string().optional(),
-  tax: z.string().optional(),
-  costAccount: z.string(),
-  preferredVendor: z.string().optional(),
-  inventoryAccount: z.string().optional(),
-  openingStock: z
-    .number()
-    .min(0, "Opening stock must be at least 0")
-    .optional(),
-  reorderPoint: z
-    .number()
-    .min(0, "Reorder point must be at least 0")
-    .optional(),
-  inventoryValuationMethod: z.string().optional(),
+  quantity: z.number().min(0, "Quantity must be a positive number"),
+  warranty: z.string().optional().nullable(), // Add .nullable() to match form component
+  price: z.number().min(0, "Price must be a positive number"),
 });
 
 export type ItemFormValues = z.infer<typeof itemSchema>;
 
-// Customer schema
-
-const addressValidationSchema = z.object({
-  attention: z.string().optional(),
-  country: z.string().min(1, { message: "Country is required" }),
-  address: z.string().min(1, { message: "Address is required" }),
-  street2: z.string().optional(),
-  city: z.string().min(1, { message: "City is required" }),
-  state: z.string().min(1, { message: "State is required" }),
-  zipCode: z.string().min(1, { message: "ZIP/Postal code is required" }),
-  phone: z.string().optional(),
-  faxNumber: z.string().optional(),
-});
-
-const primaryContactValidationSchema = z.object({
-  salutation: z.string().optional(),
-  firstName: z.string().min(1, { message: "First name is required" }),
-  lastName: z.string().min(1, { message: "Last name is required" }),
-});
-
-const phoneValidationSchema = z.object({
-  workPhone: z.string().optional(),
-  mobile: z.string().optional(),
-});
-
-const contactPersonValidationSchema = z.object({
-  salutation: z.string().optional(),
-  firstName: z.string().min(1, { message: "First name is required" }),
-  lastName: z.string().min(1, { message: "Last name is required" }),
-  email: z.string().email().optional(),
-  workPhone: z.string().optional(),
-  mobile: z.string().optional(),
-});
-
-export const customerSchema = z.object({
-  customerType: z.enum(["Business", "Individual"]),
-  primaryContact: primaryContactValidationSchema,
-  companyName: z.string().optional(),
-  displayName: z.string().min(1, { message: "Display name is required" }),
-  email: z.string().email({ message: "Valid email is required" }),
-  phone: phoneValidationSchema,
-
-  billingAddress: addressValidationSchema,
-  shippingAddress: addressValidationSchema.optional(),
-  contactPersons: z.array(contactPersonValidationSchema).optional().default([]),
-
-  taxId: z.string().optional(),
-  companyId: z.string().optional(),
-  currency: z.string().min(1, { message: "Currency is required" }),
-  paymentTerms: z.string().min(1, { message: "Payment terms are required" }),
-  enablePortal: z.boolean().optional(),
-  portalLanguage: z.string().optional(),
-
-  customFields: z.record(z.string(), z.any()).optional().default({}),
-  reportingTags: z.array(z.string()).optional().default([]),
-  remarks: z.string().optional(),
-});
+export const customerSchema = z
+  .object({
+    customerName: z.string().min(1, { message: "Customer name is required" }),
+    contactNumber: z.string().min(1, { message: "Contact number is required" }),
+    email: z.string().email().optional(),
+    address: z.string().optional(),
+    customerType: z.enum(["Business", "Individual"]),
+  })
+  .refine(
+    (data) => {
+      if (data.customerType === "Business" && !data.email) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: "Email is required for Business customers",
+      path: ["email"],
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.customerType === "Business" && !data.address) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: "Address is required for Business customers",
+      path: ["address"],
+    }
+  );
 
 export type CustomerFormValues = z.infer<typeof customerSchema>;
 

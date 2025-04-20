@@ -4,26 +4,18 @@ import type { ItemFormValues } from "../lib/schemas";
 export const itemService = {
   async getItems() {
     const response = await apiClient.get("/items");
-    return response.data;
+    return response.data; // Returns the whole response which includes meta data
   },
 
   async getItemById(id: string) {
     try {
       const response = await apiClient.get(`/items/${id}`);
-      console.log("Raw API response:", response);
 
-      // Extract the actual item data
       const data = response.data;
 
-      // The API might return data in different formats
       if (data && data.data) {
-        // Format: { data: { ...item } }
         return data.data;
-      } else if (data && data.item) {
-        // Format: { item: { ...item } }
-        return data.item;
       } else {
-        // Format: { ...item }
         return data;
       }
     } catch (error) {

@@ -1,383 +1,196 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useNavigate, useParams } from "react-router";
-import { useEffect } from "react";
-
+import * as z from "zod";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
-import { Label } from "../ui/label";
-import { Textarea } from "../ui/textarea";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
-import { Card, CardContent, CardFooter } from "../ui/card";
-import { Switch } from "../ui/switch";
-import { itemSchema, type ItemFormValues } from "../../lib/schemas";
-import { useItems } from "../../hooks/use-items";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "../ui/form";
+import apiClient from "@/lib/api-client";
+import { toast } from "sonner";
+import { useState } from "react";
+import { Edit, X } from "lucide-react";
 
-interface ItemFormProps {
-  item?: ItemFormValues;
-}
+const itemSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  quantity: z.number().min(0, "Quantity must be positive"),
+  warranty: z.string().optional().nullable(),
+  price: z.number().min(0, "Price must be positive"),
+});
 
-export function ItemForm({ item }: ItemFormProps) {
-  const navigate = useNavigate();
-  const { id } = useParams();
-  const { createItem, updateItem, isCreating, isUpdating } = useItems();
+type ItemFormValues = z.infer<typeof itemSchema>;
 
-  console.log("ItemForm received props:", item);
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    setValue,
-    watch,
-    reset,
-  } = useForm<ItemFormValues>({
+export function ItemForm({
+  initialData,
+  id,
+  onSuccess,
+}: {
+  initialData?: ItemFormValues;
+  id?: string;
+  onSuccess?: () => void;
+}) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const form = useForm<ItemFormValues>({
     resolver: zodResolver(itemSchema),
-    defaultValues: {
+    defaultValues: initialData || {
       name: "",
-      sku: "",
-      isReturnable: false,
-      dimensions: {
-        length: 0,
-        width: 0,
-        height: 0,
-        unit: "cm",
-      },
-      weight: {
-        value: 0,
-        unit: "kg",
-      },
-      manufacturer: "",
-      brand: "",
-      upc: "",
-      ean: "",
-      isbn: "",
-      mpn: "",
-      sellingPrice: 0,
-      salesAccount: "",
-      description: "",
-      tax: "",
-      costAccount: "",
-      preferredVendor: "",
-      inventoryAccount: "",
-      openingStock: 0,
-      reorderPoint: 0,
-      inventoryValuationMethod: "FIFO",
+      quantity: 0,
+      warranty: "",
+      price: 0,
     },
   });
 
-  // Reset form when item changes
-  useEffect(() => {
-    if (item) {
-      console.log("Resetting form with item data:", item);
-      reset(item);
+  const onSubmit = async (data: ItemFormValues) => {
+    try {
+      setIsLoading(true);
+      if (id) {
+        const result = await apiClient.patch(`/items/${id}`, data);
+        if (result.data.success) {
+          toast.success("Item updated successfully");
+          setIsOpen(false);
+          if (onSuccess) onSuccess();
+        }
+      } else {
+        const result = await apiClient.post(`/items/create`, data);
+        if (result.data.success) {
+          toast.success("Item created successfully");
+          setIsOpen(false);
+          if (onSuccess) onSuccess();
+        }
+      }
+      form.reset();
+    } catch (error) {
+      console.error("Error saving item:", error);
+    } finally {
+      setIsLoading(false);
     }
-  }, [item, reset]);
-
-  const onSubmit = (data: ItemFormValues) => {
-    console.log("Form submitted with data:", data);
-    if (id) {
-      updateItem({ id, data });
-    } else {
-      createItem(data);
-    }
-    navigate("/dashboard/items");
   };
 
-  const isLoading = isCreating || isUpdating;
-
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
-      <Card>
-        <CardContent className="pt-6">
-          <Tabs defaultValue="basic" className="w-full">
-            <TabsList className="mb-4">
-              <TabsTrigger value="basic">Basic Info</TabsTrigger>
-              <TabsTrigger value="pricing">Pricing</TabsTrigger>
-              <TabsTrigger value="inventory">Inventory</TabsTrigger>
-              <TabsTrigger value="details">Additional Details</TabsTrigger>
-            </TabsList>
+    <div>
+      {/* Dialog Trigger */}
+      {id ? (
+        <Button size="icon" variant="outline" onClick={() => setIsOpen(true)}>
+          <Edit />
+        </Button>
+      ) : (
+        <Button variant="outline" onClick={() => setIsOpen(true)}>
+          Create Item
+        </Button>
+      )}
 
-            <TabsContent value="basic">
-              <div className="grid gap-6 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Name</Label>
-                  <Input id="name" {...register("name")} />
-                  {errors.name && (
-                    <p className="text-sm text-red-500">
-                      {errors.name.message}
-                    </p>
-                  )}
-                </div>
+      {/* Custom Dialog */}
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#00000069] bg-opacity-50">
+          <div className="relative w-full max-w-md rounded-lg bg-white p-6 shadow-lg">
+            <button
+              className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100"
+              onClick={() => setIsOpen(false)}>
+              <X className="h-4 w-4" />
+              <span className="sr-only">Close</span>
+            </button>
 
-                <div className="space-y-2">
-                  <Label htmlFor="sku">SKU</Label>
-                  <Input id="sku" {...register("sku")} />
-                  {errors.sku && (
-                    <p className="text-sm text-red-500">{errors.sku.message}</p>
-                  )}
-                </div>
+            <div className="space-y-6 py-2">
+              <Form {...form}>
+                <form
+                  onSubmit={form.handleSubmit(onSubmit)}
+                  className="space-y-6">
+                  <div className="grid gap-6 md:grid-cols-2">
+                    <FormField
+                      control={form.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Name</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                <div className="space-y-2">
-                  <Label htmlFor="manufacturer">Manufacturer</Label>
-                  <Input id="manufacturer" {...register("manufacturer")} />
-                </div>
+                    <FormField
+                      control={form.control}
+                      name="quantity"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Quantity</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              {...field}
+                              onChange={(e) =>
+                                field.onChange(Number(e.target.value))
+                              }
+                              value={field.value}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                <div className="space-y-2">
-                  <Label htmlFor="brand">Brand</Label>
-                  <Input id="brand" {...register("brand")} />
-                </div>
+                    <FormField
+                      control={form.control}
+                      name="warranty"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Warranty</FormLabel>
+                          <FormControl>
+                            <Input {...field} value={field.value ?? ""} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    rows={3}
-                    {...register("description")}
-                  />
-                </div>
+                    <FormField
+                      control={form.control}
+                      name="price"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Price</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              {...field}
+                              onChange={(e) =>
+                                field.onChange(Number(e.target.value))
+                              }
+                              value={field.value}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="isReturnable"
-                    checked={watch("isReturnable")}
-                    onCheckedChange={(checked) =>
-                      setValue("isReturnable", checked)
-                    }
-                  />
-                  <Label htmlFor="isReturnable">Returnable</Label>
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="pricing">
-              <div className="grid gap-6 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="sellingPrice">Selling Price</Label>
-                  <Input
-                    id="sellingPrice"
-                    type="number"
-                    {...register("sellingPrice", { valueAsNumber: true })}
-                  />
-                  {errors.sellingPrice && (
-                    <p className="text-sm text-red-500">
-                      {errors.sellingPrice.message}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="salesAccount">Sales Account</Label>
-                  <Input id="salesAccount" {...register("salesAccount")} />
-                  {errors.salesAccount && (
-                    <p className="text-sm text-red-500">
-                      {errors.salesAccount.message}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="costAccount">Cost Account</Label>
-                  <Input id="costAccount" {...register("costAccount")} />
-                  {errors.costAccount && (
-                    <p className="text-sm text-red-500">
-                      {errors.costAccount.message}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="tax">Tax</Label>
-                  <Input id="tax" {...register("tax")} />
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="inventory">
-              <div className="grid gap-6 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="openingStock">Opening Stock</Label>
-                  <Input
-                    id="openingStock"
-                    type="number"
-                    {...register("openingStock", { valueAsNumber: true })}
-                  />
-                  {errors.openingStock && (
-                    <p className="text-sm text-red-500">
-                      {errors.openingStock.message}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="reorderPoint">Reorder Point</Label>
-                  <Input
-                    id="reorderPoint"
-                    type="number"
-                    {...register("reorderPoint", { valueAsNumber: true })}
-                  />
-                  {errors.reorderPoint && (
-                    <p className="text-sm text-red-500">
-                      {errors.reorderPoint.message}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="inventoryAccount">Inventory Account</Label>
-                  <Input
-                    id="inventoryAccount"
-                    {...register("inventoryAccount")}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="preferredVendor">Preferred Vendor</Label>
-                  <Input
-                    id="preferredVendor"
-                    {...register("preferredVendor")}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="inventoryValuationMethod">
-                    Inventory Valuation Method
-                  </Label>
-                  <Select
-                    defaultValue={watch("inventoryValuationMethod")}
-                    onValueChange={(value) =>
-                      setValue("inventoryValuationMethod", value)
-                    }>
-                    <SelectTrigger id="inventoryValuationMethod">
-                      <SelectValue placeholder="Select method" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="FIFO">FIFO</SelectItem>
-                      <SelectItem value="LIFO">LIFO</SelectItem>
-                      <SelectItem value="Average">Average</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="details">
-              <div className="grid gap-6 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="dimensions.length">Length</Label>
-                  <Input
-                    id="dimensions.length"
-                    type="number"
-                    step="0.1"
-                    {...register("dimensions.length", { valueAsNumber: true })}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="dimensions.width">Width</Label>
-                  <Input
-                    id="dimensions.width"
-                    type="number"
-                    step="0.1"
-                    {...register("dimensions.width", { valueAsNumber: true })}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="dimensions.height">Height</Label>
-                  <Input
-                    id="dimensions.height"
-                    type="number"
-                    step="0.1"
-                    {...register("dimensions.height", { valueAsNumber: true })}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="dimensions.unit">Dimension Unit</Label>
-                  <Select
-                    defaultValue={watch("dimensions.unit")}
-                    onValueChange={(value) =>
-                      setValue("dimensions.unit", value)
-                    }>
-                    <SelectTrigger id="dimensions.unit">
-                      <SelectValue placeholder="Select unit" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cm">Centimeter</SelectItem>
-                      <SelectItem value="m">Meter</SelectItem>
-                      <SelectItem value="inches">Inches</SelectItem>
-                      <SelectItem value="ft">Feet</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="weight.value">Weight</Label>
-                  <Input
-                    id="weight.value"
-                    type="number"
-                    step="0.01"
-                    {...register("weight.value", { valueAsNumber: true })}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="weight.unit">Weight Unit</Label>
-                  <Select
-                    defaultValue={watch("weight.unit")}
-                    onValueChange={(value) => setValue("weight.unit", value)}>
-                    <SelectTrigger id="weight.unit">
-                      <SelectValue placeholder="Select unit" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="kg">Kilogram</SelectItem>
-                      <SelectItem value="g">Gram</SelectItem>
-                      <SelectItem value="lb">Pound</SelectItem>
-                      <SelectItem value="oz">Ounce</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="upc">UPC</Label>
-                  <Input id="upc" {...register("upc")} />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="ean">EAN</Label>
-                  <Input id="ean" {...register("ean")} />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="isbn">ISBN</Label>
-                  <Input id="isbn" {...register("isbn")} />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="mpn">MPN</Label>
-                  <Input id="mpn" {...register("mpn")} />
-                </div>
-              </div>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-        <CardFooter className="flex justify-between border-t px-6 py-4">
-          <Button type="button" variant="outline" onClick={() => navigate(-1)}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={isLoading}>
-            {isLoading ? "Saving..." : item ? "Update Item" : "Create Item"}
-          </Button>
-        </CardFooter>
-      </Card>
-    </form>
+                  <div className="flex justify-end space-x-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={isLoading}>
+                      {id ? "Update Item" : "Create Item"}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
