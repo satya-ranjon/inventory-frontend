@@ -6,6 +6,7 @@ import { CustomersPage } from "./pages/customers/customers-page";
 import { CustomerProfile } from "./pages/customers/customer-profile";
 import { ItemsPage } from "./pages/items/items-page";
 import { SalesPage } from "./pages/sales/sales-page";
+import { OrderDetails } from "./pages/sales/order-details";
 import { DashboardPage } from "./pages/dashboard/dashboard-page";
 import { InitUploadThing } from "./components/ui/init-uploadthing";
 
@@ -62,6 +63,17 @@ function App() {
             </DashboardLayout>
           }
         />
+
+        {/* Order routes */}
+        <Route
+          path="/dashboard/orders"
+          element={
+            <DashboardLayout>
+              <SalesPage />
+            </DashboardLayout>
+          }
+        />
+        <Route path="/dashboard/orders/:id" element={<OrderDetails />} />
       </Routes>
     </>
   );

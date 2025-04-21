@@ -10,7 +10,6 @@ import {
   AlertCircle,
   Loader2,
 } from "lucide-react";
-import { Link } from "react-router";
 import {
   Form,
   FormField,
@@ -37,11 +36,10 @@ import { useAuth } from "../../hooks/use-auth";
 import { motion } from "framer-motion";
 
 export function LoginForm() {
-  const { login, isLoggingIn, loginError, forgotPassword } = useAuth();
+  const { login, isLoggingIn, loginError } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [resetRequested, setResetRequested] = useState(false);
-  const [resetEmail, setResetEmail] = useState("");
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -74,24 +72,6 @@ export function LoginForm() {
     } catch (error) {
       // Error handling is done by the hook
       console.error("Login failed:", error);
-    }
-  };
-
-  const handlePasswordReset = async () => {
-    const email = form.getValues("email") || resetEmail;
-    if (!email) {
-      form.setError("email", {
-        type: "manual",
-        message: "Email is required for password reset",
-      });
-      return;
-    }
-
-    try {
-      await forgotPassword(email);
-      setResetRequested(true);
-    } catch (error) {
-      console.error("Password reset request failed:", error);
     }
   };
 
@@ -161,10 +141,6 @@ export function LoginForm() {
                               placeholder="name@example.com"
                               autoComplete="email"
                               {...field}
-                              onChange={(e) => {
-                                field.onChange(e);
-                                setResetEmail(e.target.value);
-                              }}
                             />
                           </div>
                         </FormControl>
@@ -182,14 +158,6 @@ export function LoginForm() {
                       <FormItem>
                         <div className="flex items-center justify-between">
                           <FormLabel htmlFor="password">Password</FormLabel>
-                          <Button
-                            variant="link"
-                            size="sm"
-                            type="button"
-                            className="px-0 font-normal"
-                            onClick={handlePasswordReset}>
-                            Forgot password?
-                          </Button>
                         </div>
                         <FormControl>
                           <div className="relative">
@@ -262,15 +230,6 @@ export function LoginForm() {
                   </Button>
 
                   <Separator />
-
-                  <div className="text-center text-sm">
-                    Don&apos;t have an account?{" "}
-                    <Link
-                      to="/register"
-                      className="font-medium text-primary hover:underline">
-                      Register
-                    </Link>
-                  </div>
                 </form>
               </Form>
             )}

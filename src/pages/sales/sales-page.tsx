@@ -197,7 +197,7 @@ export function SalesPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return `${amount.toFixed(2)} tk`;
+    return `${amount.toLocaleString("en-US", { minimumFractionDigits: 2 })} tk`;
   };
 
   // Print a sales order
@@ -211,15 +211,11 @@ export function SalesPage() {
         return;
       }
 
-      // Business info - replace with your actual business details
-      const businessInfo = {
-        name: "Your Business Name",
-        logo: "https://placehold.co/200x100/4f46e5/ffffff?text=Your+Logo", // Replace with your logo URL
-        address: "123 Business Street, City, Country",
-        phone: "+1 234 567 8900",
-        email: "contact@yourbusiness.com",
-        website: "www.yourbusiness.com",
-        taxId: "TAX-123456789",
+      const calculateDiscountAmount = () => {
+        if (sale.discount.type === "percentage") {
+          return (sale.subTotal * sale.discount.value) / 100;
+        }
+        return sale.discount.value;
       };
 
       const printContent = `
@@ -230,244 +226,131 @@ export function SalesPage() {
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
             
-            :root {
-              --primary-color: #4f46e5;
-              --text-color: #374151;
-              --border-color: #e5e7eb;
-              --light-bg: #f9fafb;
-            }
-            
             * {
               box-sizing: border-box;
               margin: 0;
               padding: 0;
+              font-family: 'Inter', -apple-system, sans-serif;
             }
             
             body {
-              font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-              color: var(--text-color);
+              color: #374151;
               line-height: 1.5;
               padding: 2rem;
               max-width: 850px;
               margin: 0 auto;
+              font-size: 14px;
             }
             
             .invoice-container {
-              border: 1px solid var(--border-color);
+              border: 1px solid #e5e7eb;
               border-radius: 8px;
-              box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
               background: white;
-              overflow: hidden;
+              padding: 2rem;
             }
             
             .invoice-header {
               display: flex;
               justify-content: space-between;
-              padding: 2rem;
-              background-color: var(--light-bg);
-              border-bottom: 1px solid var(--border-color);
+              margin-bottom: 2rem;
             }
             
-            .logo-container {
-              display: flex;
-              flex-direction: column;
-            }
-            
-            .logo {
-              max-width: 200px;
-              height: auto;
-              margin-bottom: 0.5rem;
-            }
-            
-            .invoice-title {
-              color: var(--primary-color);
-              font-size: 2rem;
+            .company-info h2 {
+              font-size: 1.25rem;
               font-weight: 700;
               margin-bottom: 0.5rem;
             }
             
-            .invoice-details {
+            .company-info p {
+              margin-bottom: 0.25rem;
+            }
+            
+            .invoice-info {
               text-align: right;
             }
             
-            .invoice-id {
-              font-size: 1.1rem;
-              font-weight: 600;
+            .invoice-info h2 {
+              font-size: 1.25rem;
               margin-bottom: 0.5rem;
             }
             
-            .invoice-date {
-              color: #6b7280;
-              margin-bottom: 0.5rem;
+            .customer-info {
+              margin-top: 1rem;
             }
             
-            .status {
-              display: inline-block;
-              padding: 0.35rem 0.75rem;
-              border-radius: 0.375rem;
-              font-size: 0.875rem;
-              font-weight: 500;
-              text-transform: uppercase;
-              letter-spacing: 0.05em;
-            }
-            
-            .draft { background-color: #f3f4f6; color: #4b5563; }
-            .confirmed { background-color: #e0f2fe; color: #0369a1; }
-            .shipped { background-color: #fef3c7; color: #b45309; }
-            .delivered { background-color: #d1fae5; color: #047857; }
-            .cancelled { background-color: #fee2e2; color: #b91c1c; }
-            
-            .section {
-              padding: 2rem;
-              border-bottom: 1px solid var(--border-color);
-            }
-            
-            .section-title {
-              font-size: 1.1rem;
+            .customer-info h3 {
               font-weight: 600;
-              color: var(--primary-color);
-              margin-bottom: 1rem;
-            }
-            
-            .columns {
-              display: flex;
-              justify-content: space-between;
-              gap: 2rem;
-            }
-            
-            .column {
-              flex: 1;
-            }
-            
-            .info-line {
               margin-bottom: 0.5rem;
-            }
-            
-            .info-label {
-              font-weight: 500;
-              color: #6b7280;
-              margin-right: 0.5rem;
-            }
-            
-            .info-value {
-              font-weight: 600;
             }
             
             table {
               width: 100%;
               border-collapse: collapse;
+              margin: 2rem 0;
             }
             
             thead {
-              background-color: var(--light-bg);
+              background-color: #f3f4f6;
             }
             
-            th {
-              color: #6b7280;
-              font-weight: 500;
-              padding: 0.75rem 1rem;
+            th, td {
+              padding: 0.75rem;
+              border: 1px solid #e5e7eb;
               text-align: left;
-              font-size: 0.875rem;
-              text-transform: uppercase;
-              letter-spacing: 0.05em;
-              border-bottom: 1px solid var(--border-color);
             }
             
-            td {
-              padding: 1rem;
-              border-bottom: 1px solid var(--border-color);
-              vertical-align: top;
-            }
-            
-            .amount {
-              text-align: right;
-            }
-            
-            .quantity {
-              text-align: center;
+            tr:nth-child(even) {
+              background-color: #f9fafb;
             }
             
             .summary {
-              padding: 1.5rem 2rem;
-              border-top: 1px solid var(--border-color);
               display: flex;
               justify-content: flex-end;
             }
             
             .summary-table {
-              width: 300px;
-              border-collapse: collapse;
+              width: 50%;
             }
             
-            .summary-table td {
-              padding: 0.4rem 0;
-              border: none;
+            .summary-row {
+              display: flex;
+              justify-content: space-between;
+              padding: 0.5rem 0;
+              border-bottom: 1px solid #e5e7eb;
             }
             
-            .summary-table .label {
-              color: #6b7280;
-            }
-            
-            .summary-table .value {
-              text-align: right;
-              font-weight: 500;
-            }
-            
-            .summary-table .total {
+            .summary-row.total {
               font-weight: 700;
-              color: var(--primary-color);
-              font-size: 1.1rem;
             }
             
-            .footer {
-              padding: 2rem;
-              text-align: center;
-              color: #6b7280;
-              font-size: 0.875rem;
+            .summary-row.paid {
+              color: #059669;
             }
             
-            .notes {
-              padding: 1.5rem 2rem;
-              background-color: var(--light-bg);
-              border-top: 1px solid var(--border-color);
-            }
-            
-            .company-details {
-              padding: 1.5rem 2rem;
-              background-color: var(--light-bg);
-              text-align: center;
-              color: #6b7280;
-              font-size: 0.875rem;
-              border-top: 1px solid var(--border-color);
+            .summary-row.due {
+              color: #dc2626;
+              font-weight: 700;
             }
             
             .print-button {
               display: block;
               margin: 1.5rem auto;
               padding: 0.75rem 1.5rem;
-              background-color: var(--primary-color);
+              background-color: #4f46e5;
               color: white;
               border: none;
               border-radius: 0.375rem;
               font-weight: 500;
               cursor: pointer;
-              transition: background-color 0.15s ease;
-            }
-            
-            .print-button:hover {
-              background-color: #4338ca;
             }
             
             @media print {
               body {
                 padding: 0;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
               }
               
               .invoice-container {
                 border: none;
-                box-shadow: none;
               }
               
               .print-button {
@@ -479,102 +362,121 @@ export function SalesPage() {
         <body>
           <div class="invoice-container">
             <div class="invoice-header">
-              <div class="logo-container">
-                <img src="${businessInfo.logo}" alt="${businessInfo.name} Logo" class="logo">
-                <div>${businessInfo.name}</div>
+              <!-- Company Info -->
+              <div class="company-info">
+                <h2>Inventory Management System</h2>
+                <p>Dhaka, Bangladesh</p>
+                <p>Mobile: +8801717171717 (Office)</p>
+                <p>Mobile: +8801717171717 (Sales)</p>
+                <p>Email: inventory@gmail.com</p>
+                <p>Sold By: ${sale.customer?.customerName || "N/A"}</p>
               </div>
-              <div class="invoice-details">
-                <div class="invoice-title">SALES ORDER</div>
-                <div class="invoice-id">#${sale.orderNumber}</div>
-                <div class="invoice-date">Date: ${new Date(sale.salesOrderDate).toLocaleDateString()}</div>
-                <div class="status ${sale.status.toLowerCase()}">${sale.status}</div>
-              </div>
-            </div>
-            
-            <div class="section">
-              <div class="columns">
-                <div class="column">
-                  <div class="section-title">Company Info</div>
-                  <div class="info-line">${businessInfo.name}</div>
-                  <div class="info-line">${businessInfo.address}</div>
-                  <div class="info-line">Phone: ${businessInfo.phone}</div>
-                  <div class="info-line">Email: ${businessInfo.email}</div>
-                  <div class="info-line">Tax ID: ${businessInfo.taxId}</div>
-                </div>
-                <div class="column">
-                  <div class="section-title">Customer Info</div>
-                  <div class="info-line">
-                    <span class="info-value">${sale.customer?.customerName || "N/A"}</span>
-                  </div>
-                  ${sale.customer?.email ? `<div class="info-line">Email: ${sale.customer.email}</div>` : ""}
-                  <div class="info-line">Reference: ${sale.reference || "N/A"}</div>
-                  <div class="info-line">Payment Terms: ${sale.paymentTerms || "N/A"}</div>
-                  <div class="info-line">Sales Person: ${sale.salesPerson || "N/A"}</div>
+              
+              <!-- Invoice Info -->
+              <div class="invoice-info">
+                <h2>Invoice</h2>
+                <p><strong>Invoice No:</strong> ${sale.orderNumber}</p>
+                <p><strong>Invoice Date:</strong> ${format(new Date(sale.salesOrderDate), "dd/MM/yyyy")}</p>
+                
+                <div class="customer-info">
+                  <h3>Bill To</h3>
+                  <p><strong>Name:</strong> ${sale.customer?.customerName || "N/A"}</p>
+                  <p><strong>Email:</strong> ${sale.customer?.email || "N/A"}</p>
+                  <p><strong>Reference:</strong> ${sale.reference || "N/A"}</p>
                 </div>
               </div>
             </div>
             
-            <div class="section">
-              <div class="section-title">Order Items</div>
-              <table>
-                <thead>
-                  <tr>
-                    <th style="width: 40%;">Item</th>
-                    <th class="quantity" style="width: 15%;">Quantity</th>
-                    <th class="amount" style="width: 20%;">Rate</th>
-                    <th class="amount" style="width: 25%;">Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${sale.items
-                    .map(
-                      (item) => `
-                    <tr>
-                      <td>${item.item.name}</td>
-                      <td class="quantity">${item.quantity}</td>
-                      <td class="amount">${formatCurrency(item.rate)}</td>
-                      <td class="amount">${formatCurrency(item.amount)}</td>
-                    </tr>
-                  `
-                    )
-                    .join("")}
-                </tbody>
-              </table>
-            </div>
-            
-            <div class="summary">
-              <table class="summary-table">
+            <!-- Items Table -->
+            <table>
+              <thead>
                 <tr>
-                  <td class="label">Subtotal:</td>
-                  <td class="value">${formatCurrency(sale.total - (sale.due || 0))}</td>
+                  <th>SL</th>
+                  <th>Item</th>
+                  <th>Price</th>
+                  <th>Quantity</th>
+                  <th>Total</th>
                 </tr>
+              </thead>
+              <tbody>
+                ${sale.items
+                  .map(
+                    (item, index) => `
+                  <tr>
+                    <td>${index + 1}</td>
+                    <td>${item.item.name}</td>
+                    <td>${formatCurrency(item.rate)}</td>
+                    <td>${item.quantity}</td>
+                    <td>${formatCurrency(item.amount)}</td>
+                  </tr>
+                `
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+            
+            <!-- Summary -->
+            <div class="summary">
+              <div class="summary-table">
+                <div class="summary-row">
+                  <span><strong>Subtotal:</strong></span>
+                  <span>${formatCurrency(sale.subTotal)}</span>
+                </div>
+                
                 ${
-                  sale.due
+                  sale.discount.value > 0
                     ? `
-                <tr>
-                  <td class="label">Due Amount:</td>
-                  <td class="value">${formatCurrency(sale.due)}</td>
-                </tr>`
+                <div class="summary-row">
+                  <span><strong>Discount ${sale.discount.type === "percentage" ? `(${sale.discount.value}%)` : ""}:</strong></span>
+                  <span>${formatCurrency(calculateDiscountAmount())}</span>
+                </div>
+                `
                     : ""
                 }
-                <tr>
-                  <td class="label">Total:</td>
-                  <td class="value total">${formatCurrency(sale.total)}</td>
-                </tr>
-                <tr>
-                  <td class="label">Paid:</td>
-                  <td class="value">${formatCurrency(sale.payment)}</td>
-                </tr>
-                <tr>
-                  <td class="label">Balance Due:</td>
-                  <td class="value">${formatCurrency(sale.due)}</td>
-                </tr>
-              </table>
-            </div>
-            
-            <div class="company-details">
-              <div>${businessInfo.name} | ${businessInfo.address}</div>
-              <div>${businessInfo.phone} | ${businessInfo.email} | ${businessInfo.website}</div>
+                
+                ${
+                  sale.shippingCharges > 0
+                    ? `
+                <div class="summary-row">
+                  <span><strong>Shipping Charges:</strong></span>
+                  <span>${formatCurrency(sale.shippingCharges)}</span>
+                </div>
+                `
+                    : ""
+                }
+                
+                ${
+                  sale.adjustment !== 0
+                    ? `
+                <div class="summary-row">
+                  <span><strong>Adjustment:</strong></span>
+                  <span>${formatCurrency(sale.adjustment)}</span>
+                </div>
+                `
+                    : ""
+                }
+                
+                <div class="summary-row total">
+                  <span>Total:</span>
+                  <span>${formatCurrency(sale.total)}</span>
+                </div>
+                
+                <div class="summary-row paid">
+                  <span><strong>Amount Paid:</strong></span>
+                  <span>${formatCurrency(sale.payment)}</span>
+                </div>
+                
+                ${
+                  sale.due > 0
+                    ? `
+                <div class="summary-row due">
+                  <span>Balance Due:</span>
+                  <span>${formatCurrency(sale.due)}</span>
+                </div>
+                `
+                    : ""
+                }
+              </div>
             </div>
           </div>
           
@@ -984,7 +886,6 @@ export function SalesPage() {
                       <Button
                         variant="destructive"
                         size="icon"
-                        className="h-8 w-8"
                         onClick={(e) => {
                           e.stopPropagation();
                           openDeleteModal(sale._id);

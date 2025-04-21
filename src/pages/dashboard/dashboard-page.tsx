@@ -315,7 +315,7 @@ export const DashboardPage = () => {
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency: "USD",
+      currency: "BDT",
     }).format(value);
   };
 
@@ -486,7 +486,7 @@ export const DashboardPage = () => {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold text-green-600">
-              {formatCurrency(dashboardData.totalRevenue)}
+              TK {dashboardData.totalRevenue}
             </p>
           </CardContent>
         </Card>
@@ -625,57 +625,128 @@ export const DashboardPage = () => {
           <CardTitle className="text-lg">Sales by Status</CardTitle>
         </CardHeader>
         <CardContent className="h-80">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={dashboardData.salesByStatus}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                outerRadius={80}
-                fill="#8884d8"
-                dataKey="total"
-                nameKey="status"
-                label={({
-                  cx,
-                  cy,
-                  midAngle,
-                  innerRadius,
-                  outerRadius,
-                  percent,
-                }) => {
-                  const RADIAN = Math.PI / 180;
-                  const radius =
-                    innerRadius + (outerRadius - innerRadius) * 0.5;
-                  const x = cx + radius * Math.cos(-midAngle * RADIAN);
-                  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h3 className="text-sm text-center font-medium mb-2">By Count</h3>
+              <ResponsiveContainer width="100%" height={250}>
+                <PieChart>
+                  <Pie
+                    data={dashboardData.salesByStatus}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={true}
+                    outerRadius={80}
+                    innerRadius={30}
+                    fill="#8884d8"
+                    dataKey="count"
+                    nameKey="status"
+                    label={({
+                      name,
+                      cx,
+                      cy,
+                      midAngle,
+                      innerRadius,
+                      outerRadius,
+                      value,
+                    }) => {
+                      const RADIAN = Math.PI / 180;
+                      const radius =
+                        innerRadius + (outerRadius - innerRadius) * 1.1;
+                      const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                      const y = cy + radius * Math.sin(-midAngle * RADIAN);
 
-                  return (
-                    <text
-                      x={x}
-                      y={y}
-                      fill="#fff"
-                      textAnchor={x > cx ? "start" : "end"}
-                      dominantBaseline="central">
-                      {`${(percent * 100).toFixed(0)}%`}
-                    </text>
-                  );
-                }}>
-                {dashboardData.salesByStatus.map(
-                  (entry: TSalesByStatusData, index: number) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={COLORS[index % COLORS.length]}
-                    />
-                  )
-                )}
-              </Pie>
-              <Tooltip
-                formatter={(value: number) => [formatCurrency(value), "Amount"]}
-              />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
+                      return (
+                        <text
+                          x={x}
+                          y={y}
+                          fill="#000"
+                          textAnchor={x > cx ? "start" : "end"}
+                          dominantBaseline="central">
+                          {`${name}: ${value}`}
+                        </text>
+                      );
+                    }}>
+                    {dashboardData.salesByStatus.map(
+                      (_entry: TSalesByStatusData, index: number) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={COLORS[index % COLORS.length]}
+                        />
+                      )
+                    )}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value: number, name: string) => [
+                      `${value}`,
+                      `${name} - Count`,
+                    ]}
+                  />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div>
+              <h3 className="text-sm text-center font-medium mb-2">
+                By Amount
+              </h3>
+              <ResponsiveContainer width="100%" height={250}>
+                <PieChart>
+                  <Pie
+                    data={dashboardData.salesByStatus}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={true}
+                    outerRadius={80}
+                    innerRadius={30}
+                    fill="#8884d8"
+                    dataKey="total"
+                    nameKey="status"
+                    label={({
+                      name,
+                      cx,
+                      cy,
+                      midAngle,
+                      innerRadius,
+                      outerRadius,
+                    }) => {
+                      const RADIAN = Math.PI / 180;
+                      const radius =
+                        innerRadius + (outerRadius - innerRadius) * 1.1;
+                      const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                      const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+                      return (
+                        <text
+                          x={x}
+                          y={y}
+                          fill="#000"
+                          textAnchor={x > cx ? "start" : "end"}
+                          dominantBaseline="central">
+                          {`${name}`}
+                        </text>
+                      );
+                    }}>
+                    {dashboardData.salesByStatus.map(
+                      (_entry: TSalesByStatusData, index: number) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={COLORS[index % COLORS.length]}
+                        />
+                      )
+                    )}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value: number, name: string) => [
+                      formatCurrency(value),
+                      `${name} - Amount`,
+                    ]}
+                  />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
