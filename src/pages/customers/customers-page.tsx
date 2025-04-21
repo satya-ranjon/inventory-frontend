@@ -1,5 +1,13 @@
 import { useState, useEffect } from "react";
-import { Loader2, AlertTriangle, Search, Users, Trash } from "lucide-react";
+import {
+  Loader2,
+  AlertTriangle,
+  Search,
+  Users,
+  Trash,
+  ExternalLink,
+} from "lucide-react";
+import { Link } from "react-router";
 import { CustomerForm } from "../../components/customers/customer-form";
 import {
   Table,
@@ -153,7 +161,12 @@ export function CustomersPage() {
                     filteredCustomers.map((customer) => (
                       <TableRow key={customer?._id || Math.random()}>
                         <TableCell className="font-medium">
-                          {customer?.customerName || "Unnamed Customer"}
+                          <Link
+                            to={`/dashboard/customers/${customer._id}`}
+                            className="flex items-center hover:underline cursor-pointer">
+                            {customer?.customerName || "Unnamed Customer"}
+                            <ExternalLink className="ml-1 h-3 w-3" />
+                          </Link>
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">

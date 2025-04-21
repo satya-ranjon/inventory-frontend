@@ -79,64 +79,41 @@ export const customerSchema = z
 
 export type CustomerFormValues = z.infer<typeof customerSchema>;
 
-// Sales order item schema
-export const salesOrderItemSchema = z.object({
-  itemId: z.string().min(1, "Item is required"),
-  quantity: z.number().int().positive("Quantity must be a positive number"),
-  rate: z.number().nonnegative("Rate must be a positive number"),
-  amount: z.number().nonnegative(),
+// Sales item schema
+export const salesItemSchema = z.object({
+  item: z.string().min(1, "Item is required"),
+  quantity: z.number().min(1, "Quantity must be at least 1"),
+  rate: z.number().min(0, "Rate must be a positive number"),
+  amount: z.number().min(0, "Amount must be a positive number"),
+  discount: z.number().optional(),
 });
 
-// Sales order schema
-const orderItemValidationSchema = z.object({
-  _id: z.string().optional(),
-  item: z.string().refine((val) => val.length === 24, {
-    message: "Invalid item ID format",
-  }),
-  quantity: z.number().positive(),
-  rate: z.number().nonnegative(),
-  tax: z.string().optional(),
-  amount: z.number().nonnegative().optional(),
-});
+export type SalesItemFormValues = z.infer<typeof salesItemSchema>;
 
-const discountValidationSchema = z.object({
-  type: z.enum(["percentage", "amount"]),
-  value: z.number().nonnegative(),
-});
-
-const attachmentValidationSchema = z.object({
-  fileName: z.string(),
-  fileUrl: z.string().url({ message: "Invalid URL format" }),
-});
-
-export const salesOrderSchema = z.object({
-  _id: z.string().optional(),
-  orderNumber: z.string().optional(),
-  customer: z.string().refine((val) => val.length === 24, {
-    message: "Invalid customer ID format",
-  }),
+// Sales schema
+export const salesSchema = z.object({
+  customer: z.string().min(1, "Customer is required"),
   reference: z.string().optional(),
-  salesOrderDate: z.string().datetime().optional(),
-  expectedShipmentDate: z.string().datetime().optional(),
-  paymentTerms: z.string(),
+  salesOrderDate: z.date(),
+  paymentTerms: z.string().optional(),
   deliveryMethod: z.string().optional(),
   salesPerson: z.string().optional(),
-
-  items: z.array(orderItemValidationSchema).nonempty({
-    message: "At least one item is required",
+  items: z
+    .array(salesItemSchema)
+    .min(1, "At least one item is required"),
+  discount: z.object({
+    type: z.enum(["percentage", "fixed"]),
+    value: z.number().min(0),
   }),
-
-  discount: discountValidationSchema.optional(),
-  shippingCharges: z.number().nonnegative().optional(),
-  adjustment: z.number().optional(),
-
+  shippingCharges: z.number().min(0),
+  adjustment: z.number(),
   customerNotes: z.string().optional(),
   termsAndConditions: z.string().optional(),
-
-  status: z
-    .enum(["Draft", "Confirmed", "Shipped", "Delivered", "Cancelled"])
-    .optional(),
-  attachments: z.array(attachmentValidationSchema).optional(),
+  status: z.enum(["Draft", "Confirmed", "Shipped", "Delivered", "Cancelled"]),
+  payment: z.number().min(0),
 });
 
-export type SalesOrderFormValues = z.infer<typeof salesOrderSchema>;
+export type SalesFormValues = z.infer<typeof salesSchema>;
+
+
+

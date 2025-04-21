@@ -3,10 +3,9 @@ import { DashboardLayout } from "./components/layout/dashboard-layout";
 import { LoginForm } from "./components/auth/login-form";
 import { RegisterForm } from "./components/auth/register-form";
 import { CustomersPage } from "./pages/customers/customers-page";
-import { CustomerProfile } from "./pages/customers/customer-profile";
 import { ItemsPage } from "./pages/items/items-page";
 import { SalesPage } from "./pages/sales/sales-page";
-import { DashboardPage } from "./pages/dashboard/dashboard-page";
+import { SalesOrderFormPage } from "./pages/sales/sales-order-form-page";
 import { InitUploadThing } from "./components/ui/init-uploadthing";
 
 function App() {
@@ -20,7 +19,7 @@ function App() {
           path="/dashboard"
           element={
             <DashboardLayout>
-              <DashboardPage />
+              <div className=""></div>
             </DashboardLayout>
           }
         />
@@ -31,14 +30,6 @@ function App() {
           element={
             <DashboardLayout>
               <CustomersPage />
-            </DashboardLayout>
-          }
-        />
-        <Route
-          path="/dashboard/customers/:id"
-          element={
-            <DashboardLayout>
-              <CustomerProfile />
             </DashboardLayout>
           }
         />
@@ -53,12 +44,28 @@ function App() {
           }
         />
 
-        {/* Sales routes */}
+        {/* Sales Order routes */}
         <Route
           path="/dashboard/sales"
           element={
             <DashboardLayout>
               <SalesPage />
+            </DashboardLayout>
+          }
+        />
+        <Route
+          path="/dashboard/sales/new"
+          element={
+            <DashboardLayout>
+              <SalesOrderFormPage />
+            </DashboardLayout>
+          }
+        />
+        <Route
+          path="/dashboard/sales/:id"
+          element={
+            <DashboardLayout>
+              <SalesOrderFormPage />
             </DashboardLayout>
           }
         />
