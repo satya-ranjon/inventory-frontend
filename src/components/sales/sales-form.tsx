@@ -79,13 +79,6 @@ const generateDefaultContent = () => {
     `PAYMENT TERMS:\n` +
     `1. Payment is due within the agreed payment terms.\n` +
     `2. Late payments may incur a service charge of 1.5% per month.\n\n` +
-    `DELIVERY & RETURNS:\n` +
-    `1. Goods once sold cannot be returned without prior authorization.\n` +
-    `2. Delivery times are estimates and may vary based on availability.\n` +
-    `3. Please inspect all items upon delivery. Claims for damaged goods must be made within 48 hours.\n\n` +
-    `WARRANTY:\n` +
-    `1. Warranty claims must be accompanied by proof of purchase.\n` +
-    `2. Warranty period varies by product and is specified in product documentation.\n\n` +
     `Last updated: ${formattedDate}`;
 
   return { defaultNotes, defaultTerms };

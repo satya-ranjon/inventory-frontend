@@ -224,6 +224,8 @@ interface Customer {
   customerName?: string;
   email?: string;
   due?: number;
+  address?: string;
+  contactNumber?: string;
 }
 
 interface SalesItem {
@@ -473,7 +475,7 @@ export function SalesPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return `${amount.toLocaleString("en-US", { minimumFractionDigits: 2 })} tk`;
+    return `${amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
   };
 
   // Print a sales order
@@ -642,14 +644,15 @@ export function SalesPage() {
         <body>
           <div class="invoice-container">
             <div class="invoice-header">
+            
               <!-- Company Info -->
               <div class="company-info">
+              <img style="width: 50px; height: 50px;" src="https://i.ibb.co.com/Z1zKNVkp/material-management.png" alt="logo" />
                 <h2>Inventory Management System</h2>
                 <p>Dhaka, Bangladesh</p>
                 <p>Mobile: +8801717171717 (Office)</p>
                 <p>Mobile: +8801717171717 (Sales)</p>
                 <p>Email: inventory@gmail.com</p>
-                <p>Sold By: ${sale.customer?.customerName || "N/A"}</p>
               </div>
               
               <!-- Invoice Info -->
@@ -662,7 +665,8 @@ export function SalesPage() {
                   <h3>Bill To</h3>
                   <p><strong>Name:</strong> ${sale.customer?.customerName || "N/A"}</p>
                   <p><strong>Email:</strong> ${sale.customer?.email || "N/A"}</p>
-                  <p><strong>Reference:</strong> ${sale.reference || "N/A"}</p>
+                  <p><strong>Address:</strong> ${sale.customer?.address || "N/A"}</p>
+                  <p><strong>Phone:</strong> ${sale.customer?.contactNumber || "N/A"}</p>
                 </div>
               </div>
             </div>
@@ -695,79 +699,106 @@ export function SalesPage() {
               </tbody>
             </table>
             
-            <!-- Summary -->
-            <div class="summary">
-              <div class="summary-table">
-                <div class="summary-row">
-                  <span><strong>Subtotal:</strong></span>
-                  <span>${formatCurrency(sale.subTotal)}</span>
+            <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 1rem;">
+              <!-- Notes and Terms Side-by-Side -->
+              <div style="flex: 1; max-width: 60%;">
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                  <!-- Customer Notes -->
+                  <div>
+                    <h3 style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.25rem; color: #4b5563;">Customer Notes</h3>
+                    <p style="font-size: 0.75rem; white-space: pre-line;  padding: 0.5rem; min-height: 60px;  background-color: #f9fafb; line-height: 1.3;">
+                      ${sale.customerNotes || "No customer notes"}
+                    </p>
+                  </div>
+                  
+                  <!-- Terms and Conditions -->
+                  <div>
+                    <h3 style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.25rem; color: #4b5563;">Terms and Conditions</h3>
+                    <p style="font-size: 0.75rem; white-space: pre-line;   padding: 0.5rem; min-height: 60px;  background-color: #f9fafb; line-height: 1.3;">
+                      ${sale.termsAndConditions || "No terms and conditions"}
+                    </p>
+                  </div>
                 </div>
-                
-                ${
-                  sale.discount.value > 0
-                    ? `
-                <div class="summary-row">
-                  <span><strong>Discount ${sale.discount.type === "percentage" ? `(${sale.discount.value}%)` : ""}:</strong></span>
-                  <span>${formatCurrency(calculateDiscountAmount())}</span>
-                </div>
-                `
-                    : ""
-                }
-                
-                ${
-                  sale.shippingCharges > 0
-                    ? `
-                <div class="summary-row">
-                  <span><strong>Shipping Charges:</strong></span>
-                  <span>${formatCurrency(sale.shippingCharges)}</span>
-                </div>
-                `
-                    : ""
-                }
-                
-                ${
-                  sale.adjustment !== 0
-                    ? `
-                <div class="summary-row">
-                  <span><strong>Adjustment:</strong></span>
-                  <span>${formatCurrency(sale.adjustment)}</span>
-                </div>
-                `
-                    : ""
-                }
-                
-                <div class="summary-row total">
-                  <span>Total:</span>
-                  <span>${formatCurrency(sale.total)}</span>
-                </div>
-                
-                <div class="summary-row paid">
-                  <span><strong>Amount Paid:</strong></span>
-                  <span>${formatCurrency(sale.payment)}</span>
-                </div>
-                
-                ${
-                  sale.previousDue > 0
-                    ? `
-                <div class="summary-row previous-due">
-                  <span>Previous Due:</span>
-                  <span>${formatCurrency(sale.previousDue)}</span>
-                </div>
-                `
-                    : ""
-                }
-                
-                ${
-                  sale.due > 0
-                    ? `
-                <div class="summary-row due">
-                  <span>Balance Due:</span>
-                  <span>${formatCurrency(sale.due)}</span>
-                </div>
-                `
-                    : ""
-                }
               </div>
+            
+              <!-- Summary -->
+              <div style="min-width: 40%;">
+                <div style=" padding: 0.5rem; background-color: #f9fafb;">
+                  <div style="display: flex; justify-content: space-between; padding: 0.25rem 0; color: #4b5563; font-size: 0.75rem;">
+                    <span><strong>Subtotal:</strong></span>
+                    <span>${formatCurrency(sale.subTotal)}</span>
+                  </div>
+                  
+                  ${
+                    sale.discount.value > 0
+                      ? `
+                  <div style="display: flex; justify-content: space-between; padding: 0.25rem 0; color: #4b5563; font-size: 0.75rem;">
+                    <span><strong>Discount ${sale.discount.type === "percentage" ? `(${sale.discount.value}%)` : ""}:</strong></span>
+                    <span>${formatCurrency(calculateDiscountAmount())}</span>
+                  </div>
+                  `
+                      : ""
+                  }
+                  
+                  ${
+                    sale.shippingCharges > 0
+                      ? `
+                  <div style="display: flex; justify-content: space-between; padding: 0.25rem 0; color: #4b5563; font-size: 0.75rem;">
+                    <span><strong>Shipping:</strong></span>
+                    <span>${formatCurrency(sale.shippingCharges)}</span>
+                  </div>
+                  `
+                      : ""
+                  }
+                  
+                  ${
+                    sale.adjustment !== 0
+                      ? `
+                  <div style="display: flex; justify-content: space-between; padding: 0.25rem 0; color: #4b5563; font-size: 0.75rem;">
+                    <span><strong>Adjustment:</strong></span>
+                    <span>${formatCurrency(sale.adjustment)}</span>
+                  </div>
+                  `
+                      : ""
+                  }
+                  
+                  <div style="display: flex; justify-content: space-between; margin: 0.25rem 0; padding-top: 0.25rem; border-top: 1px solid #e5e7eb; font-weight: 700; font-size: 0.75rem;">
+                    <span>Total:</span>
+                    <span>${formatCurrency(sale.total)}</span>
+                  </div>
+                  
+                  <div style="display: flex; justify-content: space-between; padding: 0.25rem 0; color: #059669; font-size: 0.75rem;">
+                    <span><strong>Amount Paid:</strong></span>
+                    <span>${formatCurrency(sale.payment)}</span>
+                  </div>
+                  
+                  ${
+                    sale.previousDue > 0
+                      ? `
+                  <div style="display: flex; justify-content: space-between; padding: 0.25rem 0; color: #9f1239; font-size: 0.75rem;">
+                    <span>Previous Due:</span>
+                    <span>${formatCurrency(sale.previousDue)}</span>
+                  </div>
+                  `
+                      : ""
+                  }
+                  
+                  ${
+                    sale.due > 0
+                      ? `
+                  <div style="display: flex; justify-content: space-between; margin-top: 0.25rem; padding-top: 0.25rem; border-top: 1px solid #e5e7eb; color: #dc2626; font-weight: 700; font-size: 0.75rem;">
+                    <span>Balance Due:</span>
+                    <span>${formatCurrency(sale.due)}</span>
+                  </div>
+                  `
+                      : ""
+                  }
+                </div>
+              </div>
+            </div>
+            
+            <div style="margin-top: 0.75rem; font-size: 0.75rem; text-align: center; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 0.5rem;">
+              <p>Thank you for your business!</p>
             </div>
           </div>
           

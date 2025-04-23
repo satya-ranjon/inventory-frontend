@@ -11,9 +11,7 @@ import {
   MapPin,
   CreditCard,
   Banknote,
-  ShoppingBag,
   BarChart3,
-  ExternalLink,
   Printer,
 } from "lucide-react";
 import { format } from "date-fns";
@@ -92,6 +90,9 @@ interface Order {
     address?: string;
   };
 }
+
+// Define SalesOrder as an alias to Order
+type SalesOrder = Order;
 
 interface Customer {
   _id: string;
@@ -213,8 +214,7 @@ export function CustomerProfile() {
     return `${amount.toLocaleString("en-US", { minimumFractionDigits: 2 })} tk`;
   };
 
-  // Print a sales order
-  const printSalesOrder = (order: Order) => {
+  const printSalesOrder = (sale: SalesOrder) => {
     try {
       const printWindow = window.open("", "_blank");
       if (!printWindow) {
@@ -225,17 +225,17 @@ export function CustomerProfile() {
       }
 
       const calculateDiscountAmount = () => {
-        if (order.discount.type === "percentage") {
-          return (order.subTotal * order.discount.value) / 100;
+        if (sale.discount.type === "percentage") {
+          return (sale.subTotal * sale.discount.value) / 100;
         }
-        return order.discount.value;
+        return sale.discount.value;
       };
 
       const printContent = `
         <!DOCTYPE html>
         <html>
         <head>
-          <title>Sales Order #${order.orderNumber}</title>
+          <title>Sales Order #${sale.orderNumber}</title>
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
             
@@ -379,27 +379,29 @@ export function CustomerProfile() {
         <body>
           <div class="invoice-container">
             <div class="invoice-header">
+            
               <!-- Company Info -->
               <div class="company-info">
+              <img style="width: 50px; height: 50px;" src="https://i.ibb.co.com/Z1zKNVkp/material-management.png" alt="logo" />
                 <h2>Inventory Management System</h2>
                 <p>Dhaka, Bangladesh</p>
                 <p>Mobile: +8801717171717 (Office)</p>
                 <p>Mobile: +8801717171717 (Sales)</p>
                 <p>Email: inventory@gmail.com</p>
-                <p>Sold By: ${order.salesPerson || "N/A"}</p>
               </div>
               
               <!-- Invoice Info -->
               <div class="invoice-info">
                 <h2>Invoice</h2>
-                <p><strong>Invoice No:</strong> ${order.orderNumber}</p>
-                <p><strong>Invoice Date:</strong> ${format(new Date(order.salesOrderDate), "dd/MM/yyyy")}</p>
+                <p><strong>Invoice No:</strong> ${sale.orderNumber}</p>
+                <p><strong>Invoice Date:</strong> ${format(new Date(sale.salesOrderDate), "dd/MM/yyyy")}</p>
                 
                 <div class="customer-info">
                   <h3>Bill To</h3>
-                  <p><strong>Name:</strong> ${order.customer?.customerName || "N/A"}</p>
-                  <p><strong>Email:</strong> ${order.customer?.email || "N/A"}</p>
-                  <p><strong>Reference:</strong> ${order.reference || "N/A"}</p>
+                  <p><strong>Name:</strong> ${sale.customer?.customerName || "N/A"}</p>
+                  <p><strong>Email:</strong> ${sale.customer?.email || "N/A"}</p>
+                  <p><strong>Address:</strong> ${sale.customer?.address || "N/A"}</p>
+                  <p><strong>Phone:</strong> ${sale.customer?.contactNumber || "N/A"}</p>
                 </div>
               </div>
             </div>
@@ -416,7 +418,7 @@ export function CustomerProfile() {
                 </tr>
               </thead>
               <tbody>
-                ${order.items
+                ${sale.items
                   .map(
                     (item, index) => `
                   <tr>
@@ -432,79 +434,106 @@ export function CustomerProfile() {
               </tbody>
             </table>
             
-            <!-- Summary -->
-            <div class="summary">
-              <div class="summary-table">
-                <div class="summary-row">
-                  <span><strong>Subtotal:</strong></span>
-                  <span>${formatCurrency(order.subTotal)}</span>
+            <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 1rem;">
+              <!-- Notes and Terms Side-by-Side -->
+              <div style="flex: 1; max-width: 60%;">
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                  <!-- Customer Notes -->
+                  <div>
+                    <h3 style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.25rem; color: #4b5563;">Customer Notes</h3>
+                    <p style="font-size: 0.75rem; white-space: pre-line;  padding: 0.5rem; min-height: 60px;  background-color: #f9fafb; line-height: 1.3;">
+                      ${sale.customerNotes || "No customer notes"}
+                    </p>
+                  </div>
+                  
+                  <!-- Terms and Conditions -->
+                  <div>
+                    <h3 style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.25rem; color: #4b5563;">Terms and Conditions</h3>
+                    <p style="font-size: 0.75rem; white-space: pre-line;   padding: 0.5rem; min-height: 60px;  background-color: #f9fafb; line-height: 1.3;">
+                      ${sale.termsAndConditions || "No terms and conditions"}
+                    </p>
+                  </div>
                 </div>
-                
-                ${
-                  order.discount.value > 0
-                    ? `
-                <div class="summary-row">
-                  <span><strong>Discount ${order.discount.type === "percentage" ? `(${order.discount.value}%)` : ""}:</strong></span>
-                  <span>${formatCurrency(calculateDiscountAmount())}</span>
-                </div>
-                `
-                    : ""
-                }
-                
-                ${
-                  order.shippingCharges > 0
-                    ? `
-                <div class="summary-row">
-                  <span><strong>Shipping Charges:</strong></span>
-                  <span>${formatCurrency(order.shippingCharges)}</span>
-                </div>
-                `
-                    : ""
-                }
-                
-                ${
-                  order.adjustment !== 0
-                    ? `
-                <div class="summary-row">
-                  <span><strong>Adjustment:</strong></span>
-                  <span>${formatCurrency(order.adjustment)}</span>
-                </div>
-                `
-                    : ""
-                }
-                
-                <div class="summary-row total">
-                  <span>Total:</span>
-                  <span>${formatCurrency(order.total)}</span>
-                </div>
-                
-                <div class="summary-row paid">
-                  <span><strong>Amount Paid:</strong></span>
-                  <span>${formatCurrency(order.payment)}</span>
-                </div>
-                
-                ${
-                  order.previousDue > 0
-                    ? `
-                <div class="summary-row previous-due">
-                  <span>Previous Due:</span>
-                  <span>${formatCurrency(order.previousDue)}</span>
-                </div>
-                `
-                    : ""
-                }
-                
-                ${
-                  order.due > 0
-                    ? `
-                <div class="summary-row due">
-                  <span>Balance Due:</span>
-                  <span>${formatCurrency(order.due)}</span>
-                </div>
-                `
-                    : ""
-                }
               </div>
+            
+              <!-- Summary -->
+              <div style="min-width: 40%;">
+                <div style=" padding: 0.5rem; background-color: #f9fafb;">
+                  <div style="display: flex; justify-content: space-between; padding: 0.25rem 0; color: #4b5563; font-size: 0.75rem;">
+                    <span><strong>Subtotal:</strong></span>
+                    <span>${formatCurrency(sale.subTotal)}</span>
+                  </div>
+                  
+                  ${
+                    sale.discount.value > 0
+                      ? `
+                  <div style="display: flex; justify-content: space-between; padding: 0.25rem 0; color: #4b5563; font-size: 0.75rem;">
+                    <span><strong>Discount ${sale.discount.type === "percentage" ? `(${sale.discount.value}%)` : ""}:</strong></span>
+                    <span>${formatCurrency(calculateDiscountAmount())}</span>
+                  </div>
+                  `
+                      : ""
+                  }
+                  
+                  ${
+                    sale.shippingCharges > 0
+                      ? `
+                  <div style="display: flex; justify-content: space-between; padding: 0.25rem 0; color: #4b5563; font-size: 0.75rem;">
+                    <span><strong>Shipping:</strong></span>
+                    <span>${formatCurrency(sale.shippingCharges)}</span>
+                  </div>
+                  `
+                      : ""
+                  }
+                  
+                  ${
+                    sale.adjustment !== 0
+                      ? `
+                  <div style="display: flex; justify-content: space-between; padding: 0.25rem 0; color: #4b5563; font-size: 0.75rem;">
+                    <span><strong>Adjustment:</strong></span>
+                    <span>${formatCurrency(sale.adjustment)}</span>
+                  </div>
+                  `
+                      : ""
+                  }
+                  
+                  <div style="display: flex; justify-content: space-between; margin: 0.25rem 0; padding-top: 0.25rem; border-top: 1px solid #e5e7eb; font-weight: 700; font-size: 0.75rem;">
+                    <span>Total:</span>
+                    <span>${formatCurrency(sale.total)}</span>
+                  </div>
+                  
+                  <div style="display: flex; justify-content: space-between; padding: 0.25rem 0; color: #059669; font-size: 0.75rem;">
+                    <span><strong>Amount Paid:</strong></span>
+                    <span>${formatCurrency(sale.payment)}</span>
+                  </div>
+                  
+                  ${
+                    sale.previousDue > 0
+                      ? `
+                  <div style="display: flex; justify-content: space-between; padding: 0.25rem 0; color: #9f1239; font-size: 0.75rem;">
+                    <span>Previous Due:</span>
+                    <span>${formatCurrency(sale.previousDue)}</span>
+                  </div>
+                  `
+                      : ""
+                  }
+                  
+                  ${
+                    sale.due > 0
+                      ? `
+                  <div style="display: flex; justify-content: space-between; margin-top: 0.25rem; padding-top: 0.25rem; border-top: 1px solid #e5e7eb; color: #dc2626; font-weight: 700; font-size: 0.75rem;">
+                    <span>Balance Due:</span>
+                    <span>${formatCurrency(sale.due)}</span>
+                  </div>
+                  `
+                      : ""
+                  }
+                </div>
+              </div>
+            </div>
+            
+            <div style="margin-top: 0.75rem; font-size: 0.75rem; text-align: center; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 0.5rem;">
+              <p>Thank you for your business!</p>
             </div>
           </div>
           
@@ -532,7 +561,6 @@ export function CustomerProfile() {
       toast.error("Failed to print sales order");
     }
   };
-
   return (
     <div className="container mx-auto py-6 max-w-7xl">
       <div className="flex items-center justify-between mb-6">
@@ -684,12 +712,6 @@ export function CustomerProfile() {
                 <CardHeader>
                   <div className="flex justify-between items-center">
                     <CardTitle>Latest Order</CardTitle>
-                    <Link to={`/dashboard/orders/${latestOrder._id}`}>
-                      <Button variant="ghost" size="sm" className="h-8 gap-1">
-                        <ExternalLink className="h-3.5 w-3.5" />
-                        View
-                      </Button>
-                    </Link>
                   </div>
                   <CardDescription>
                     Order #{latestOrder.orderNumber} •{" "}
@@ -797,10 +819,6 @@ export function CustomerProfile() {
               <CardHeader>
                 <div className="flex justify-between items-center">
                   <CardTitle>Order History</CardTitle>
-                  <Button variant="outline" size="sm">
-                    <ShoppingBag className="h-4 w-4 mr-2" />
-                    New Order
-                  </Button>
                 </div>
                 <CardDescription>
                   {orders.length} order{orders.length !== 1 ? "s" : ""} placed
@@ -941,213 +959,6 @@ export function CustomerProfile() {
                     </Table>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Financial Section */}
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Financial</h2>
-            <Card>
-              <CardHeader>
-                <CardTitle>Financial Overview</CardTitle>
-                <CardDescription>
-                  Track payments and outstanding balance
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <div className="flex justify-between items-center">
-                        <CardTitle className="text-lg">
-                          Payment Summary
-                        </CardTitle>
-                        <Button variant="outline" size="sm">
-                          Add Payment
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium">
-                            Total Billed
-                          </span>
-                          <span className="font-bold">
-                            Tk{" "}
-                            {totalSpent.toLocaleString("en-US", {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium">
-                            Total Paid
-                          </span>
-                          <span className="font-bold text-green-600">
-                            Tk{" "}
-                            {(totalSpent - customer.due).toLocaleString(
-                              "en-US",
-                              {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              }
-                            )}
-                          </span>
-                        </div>
-                        <Separator />
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium">
-                            Outstanding Balance
-                          </span>
-                          <span className="font-bold text-red-500">
-                            Tk{" "}
-                            {Number(customer.due).toLocaleString("en-US", {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })}
-                          </span>
-                        </div>
-
-                        <div className="pt-2">
-                          <p className="text-sm font-medium mb-2">
-                            Payment Status
-                          </p>
-                          <div className="flex items-center space-x-2 text-sm">
-                            <div className="grow">
-                              <Progress
-                                value={
-                                  ((totalSpent - customer.due) / totalSpent) *
-                                  100
-                                }
-                                className="h-2"
-                              />
-                            </div>
-                            <div className="text-muted-foreground">
-                              {(
-                                ((totalSpent - customer.due) / totalSpent) *
-                                100
-                              ).toFixed(0)}
-                              %
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-lg">
-                        Order Payment Status
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-4 gap-2 text-center text-sm">
-                          <div className="bg-green-100 rounded-md p-2">
-                            <p className="font-bold text-green-700">
-                              {paidOrders}
-                            </p>
-                            <p className="text-xs text-green-700">Paid</p>
-                          </div>
-                          <div className="bg-yellow-100 rounded-md p-2">
-                            <p className="font-bold text-yellow-700">
-                              {
-                                orders.filter((o) => o.due > 0 && o.payment > 0)
-                                  .length
-                              }
-                            </p>
-                            <p className="text-xs text-yellow-700">Partial</p>
-                          </div>
-                          <div className="bg-red-100 rounded-md p-2">
-                            <p className="font-bold text-red-700">
-                              {orders.filter((o) => o.payment === 0).length}
-                            </p>
-                            <p className="text-xs text-red-700">Unpaid</p>
-                          </div>
-                          <div className="bg-blue-100 rounded-md p-2">
-                            <p className="font-bold text-blue-700">
-                              {totalOrders}
-                            </p>
-                            <p className="text-xs text-blue-700">Total</p>
-                          </div>
-                        </div>
-
-                        <div className="pt-2">
-                          <p className="text-sm font-medium mb-2">
-                            Outstanding Orders
-                          </p>
-                          <div className="space-y-3">
-                            {orders
-                              .filter((order) => order.due > 0)
-                              .slice(0, 3)
-                              .map((order) => (
-                                <div
-                                  key={order._id}
-                                  className="flex justify-between items-center">
-                                  <div>
-                                    <p className="text-sm font-medium">
-                                      {order.orderNumber}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                      {format(
-                                        new Date(order.salesOrderDate),
-                                        "PP"
-                                      )}
-                                    </p>
-                                  </div>
-                                  <div className="text-right">
-                                    <p className="text-sm text-red-500">
-                                      Tk{" "}
-                                      {Number(order.due).toLocaleString(
-                                        "en-US",
-                                        {
-                                          minimumFractionDigits: 2,
-                                          maximumFractionDigits: 2,
-                                        }
-                                      )}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                      of{" "}
-                                      {Number(order.total).toLocaleString(
-                                        "en-US",
-                                        {
-                                          minimumFractionDigits: 2,
-                                          maximumFractionDigits: 2,
-                                        }
-                                      )}
-                                    </p>
-                                  </div>
-                                </div>
-                              ))}
-
-                            {orders.filter((order) => order.due > 0).length >
-                              3 && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="w-full mt-2">
-                                View All Outstanding Orders
-                              </Button>
-                            )}
-
-                            {orders.filter((order) => order.due > 0).length ===
-                              0 && (
-                              <div className="flex flex-col items-center justify-center py-4 text-center">
-                                <p className="text-sm text-muted-foreground">
-                                  No outstanding orders
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
               </CardContent>
             </Card>
           </div>
