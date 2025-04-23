@@ -14,6 +14,7 @@ import {
   ShoppingBag,
   BarChart3,
   ExternalLink,
+  Printer,
 } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -79,9 +80,17 @@ interface Order {
   termsAndConditions: string;
   status: string;
   payment: number;
+  previousDue: number;
   due: number;
   createdAt: string;
   updatedAt: string;
+  customer?: {
+    _id: string;
+    customerName: string;
+    email: string;
+    contactNumber?: string;
+    address?: string;
+  };
 }
 
 interface Customer {
@@ -94,6 +103,7 @@ interface Customer {
   due: number;
   createdAt: string;
   updatedAt: string;
+  customer: Customer;
 }
 
 interface CustomerProfileData {
@@ -180,18 +190,346 @@ export function CustomerProfile() {
       .substring(0, 2);
   };
 
+  // Get status badge color based on status
   const getStatusColor = (status: string) => {
     switch (status) {
+      case "Draft":
+        return "bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-200";
+      case "Confirmed":
+        return "bg-blue-100 hover:bg-blue-200 text-blue-800 border-blue-200";
       case "Shipped":
-        return "bg-blue-500";
+        return "bg-amber-100 hover:bg-amber-200 text-amber-800 border-amber-200";
       case "Delivered":
-        return "bg-green-500";
-      case "Pending":
-        return "bg-yellow-500";
+        return "bg-green-100 hover:bg-green-200 text-green-800 border-green-200";
       case "Cancelled":
-        return "bg-red-500";
+        return "bg-red-100 hover:bg-red-200 text-red-800 border-red-200";
       default:
-        return "bg-gray-500";
+        return "";
+    }
+  };
+
+  // Format currency
+  const formatCurrency = (amount: number) => {
+    return `${amount.toLocaleString("en-US", { minimumFractionDigits: 2 })} tk`;
+  };
+
+  // Print a sales order
+  const printSalesOrder = (order: Order) => {
+    try {
+      const printWindow = window.open("", "_blank");
+      if (!printWindow) {
+        toast.error(
+          "Unable to open print window. Please check your popup settings."
+        );
+        return;
+      }
+
+      const calculateDiscountAmount = () => {
+        if (order.discount.type === "percentage") {
+          return (order.subTotal * order.discount.value) / 100;
+        }
+        return order.discount.value;
+      };
+
+      const printContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Sales Order #${order.orderNumber}</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+            
+            * {
+              box-sizing: border-box;
+              margin: 0;
+              padding: 0;
+              font-family: 'Inter', -apple-system, sans-serif;
+            }
+            
+            body {
+              color: #374151;
+              line-height: 1.5;
+              padding: 2rem;
+              max-width: 850px;
+              margin: 0 auto;
+              font-size: 14px;
+            }
+            
+            .invoice-container {
+              border: 1px solid #e5e7eb;
+              border-radius: 8px;
+              background: white;
+              padding: 2rem;
+            }
+            
+            .invoice-header {
+              display: flex;
+              justify-content: space-between;
+              margin-bottom: 2rem;
+            }
+            
+            .company-info h2 {
+              font-size: 1.25rem;
+              font-weight: 700;
+              margin-bottom: 0.5rem;
+            }
+            
+            .company-info p {
+              margin-bottom: 0.25rem;
+            }
+            
+            .invoice-info {
+              text-align: right;
+            }
+            
+            .invoice-info h2 {
+              font-size: 1.25rem;
+              margin-bottom: 0.5rem;
+            }
+            
+            .customer-info {
+              margin-top: 1rem;
+            }
+            
+            .customer-info h3 {
+              font-weight: 600;
+              margin-bottom: 0.5rem;
+            }
+            
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 2rem 0;
+            }
+            
+            thead {
+              background-color: #f3f4f6;
+            }
+            
+            th, td {
+              padding: 0.75rem;
+              border: 1px solid #e5e7eb;
+              text-align: left;
+            }
+            
+            tr:nth-child(even) {
+              background-color: #f9fafb;
+            }
+            
+            .summary {
+              display: flex;
+              justify-content: flex-end;
+            }
+            
+            .summary-table {
+              width: 50%;
+            }
+            
+            .summary-row {
+              display: flex;
+              justify-content: space-between;
+              padding: 0.5rem 0;
+              border-bottom: 1px solid #e5e7eb;
+            }
+            
+            .summary-row.total {
+              font-weight: 700;
+            }
+            
+            .summary-row.paid {
+              color: #059669;
+            }
+            
+            .summary-row.previous-due {
+              color: #9f1239;
+            }
+            
+            .summary-row.due {
+              color: #dc2626;
+              font-weight: 700;
+            }
+            
+            .print-button {
+              display: block;
+              margin: 1.5rem auto;
+              padding: 0.75rem 1.5rem;
+              background-color: #4f46e5;
+              color: white;
+              border: none;
+              border-radius: 0.375rem;
+              font-weight: 500;
+              cursor: pointer;
+            }
+            
+            @media print {
+              body {
+                padding: 0;
+              }
+              
+              .invoice-container {
+                border: none;
+              }
+              
+              .print-button {
+                display: none;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="invoice-container">
+            <div class="invoice-header">
+              <!-- Company Info -->
+              <div class="company-info">
+                <h2>Inventory Management System</h2>
+                <p>Dhaka, Bangladesh</p>
+                <p>Mobile: +8801717171717 (Office)</p>
+                <p>Mobile: +8801717171717 (Sales)</p>
+                <p>Email: inventory@gmail.com</p>
+                <p>Sold By: ${order.salesPerson || "N/A"}</p>
+              </div>
+              
+              <!-- Invoice Info -->
+              <div class="invoice-info">
+                <h2>Invoice</h2>
+                <p><strong>Invoice No:</strong> ${order.orderNumber}</p>
+                <p><strong>Invoice Date:</strong> ${format(new Date(order.salesOrderDate), "dd/MM/yyyy")}</p>
+                
+                <div class="customer-info">
+                  <h3>Bill To</h3>
+                  <p><strong>Name:</strong> ${order.customer?.customerName || "N/A"}</p>
+                  <p><strong>Email:</strong> ${order.customer?.email || "N/A"}</p>
+                  <p><strong>Reference:</strong> ${order.reference || "N/A"}</p>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Items Table -->
+            <table>
+              <thead>
+                <tr>
+                  <th>SL</th>
+                  <th>Item</th>
+                  <th>Price</th>
+                  <th>Quantity</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${order.items
+                  .map(
+                    (item, index) => `
+                  <tr>
+                    <td>${index + 1}</td>
+                    <td>${item.item.name}</td>
+                    <td>${formatCurrency(item.rate)}</td>
+                    <td>${item.quantity}</td>
+                    <td>${formatCurrency(item.amount)}</td>
+                  </tr>
+                `
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+            
+            <!-- Summary -->
+            <div class="summary">
+              <div class="summary-table">
+                <div class="summary-row">
+                  <span><strong>Subtotal:</strong></span>
+                  <span>${formatCurrency(order.subTotal)}</span>
+                </div>
+                
+                ${
+                  order.discount.value > 0
+                    ? `
+                <div class="summary-row">
+                  <span><strong>Discount ${order.discount.type === "percentage" ? `(${order.discount.value}%)` : ""}:</strong></span>
+                  <span>${formatCurrency(calculateDiscountAmount())}</span>
+                </div>
+                `
+                    : ""
+                }
+                
+                ${
+                  order.shippingCharges > 0
+                    ? `
+                <div class="summary-row">
+                  <span><strong>Shipping Charges:</strong></span>
+                  <span>${formatCurrency(order.shippingCharges)}</span>
+                </div>
+                `
+                    : ""
+                }
+                
+                ${
+                  order.adjustment !== 0
+                    ? `
+                <div class="summary-row">
+                  <span><strong>Adjustment:</strong></span>
+                  <span>${formatCurrency(order.adjustment)}</span>
+                </div>
+                `
+                    : ""
+                }
+                
+                <div class="summary-row total">
+                  <span>Total:</span>
+                  <span>${formatCurrency(order.total)}</span>
+                </div>
+                
+                <div class="summary-row paid">
+                  <span><strong>Amount Paid:</strong></span>
+                  <span>${formatCurrency(order.payment)}</span>
+                </div>
+                
+                ${
+                  order.previousDue > 0
+                    ? `
+                <div class="summary-row previous-due">
+                  <span>Previous Due:</span>
+                  <span>${formatCurrency(order.previousDue)}</span>
+                </div>
+                `
+                    : ""
+                }
+                
+                ${
+                  order.due > 0
+                    ? `
+                <div class="summary-row due">
+                  <span>Balance Due:</span>
+                  <span>${formatCurrency(order.due)}</span>
+                </div>
+                `
+                    : ""
+                }
+              </div>
+            </div>
+          </div>
+          
+          <button class="print-button" onclick="window.print()">Print Invoice</button>
+        </body>
+        </html>
+      `;
+
+      printWindow.document.open();
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      printWindow.focus();
+
+      // Automatically print after content loads
+      printWindow.onload = () => {
+        setTimeout(() => {
+          // Small delay to ensure styles are loaded
+          printWindow.print();
+        }, 500);
+      };
+
+      toast.success("Preparing sales order for printing");
+    } catch (error) {
+      console.error("Error printing sales order:", error);
+      toast.error("Failed to print sales order");
     }
   };
 
@@ -586,14 +924,16 @@ export function CustomerProfile() {
                               </span>
                             </TableCell>
                             <TableCell>
-                              <Link to={`/dashboard/orders/${order._id}`}>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-8 w-8">
-                                  <ExternalLink className="h-4 w-4" />
-                                </Button>
-                              </Link>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  printSalesOrder(order);
+                                }}>
+                                <Printer className="h-4 w-4" />
+                              </Button>
                             </TableCell>
                           </TableRow>
                         ))}

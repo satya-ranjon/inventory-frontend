@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from "react";
-import { useParams } from "react-router";
-import { Loader2, AlertTriangle, Printer } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router";
+import { Loader2, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import apiClient from "@/lib/api-client";
+import { InvoiceView, InvoiceData } from "@/components/invoice/invoice-view";
 
 interface OrderItem {
   item: {
@@ -41,6 +42,7 @@ interface Order {
   termsAndConditions: string;
   status: string;
   payment: number;
+  previousDue: number;
   due: number;
   createdAt: string;
   updatedAt: string;
@@ -51,19 +53,17 @@ interface Order {
     email: string;
     contactNumber: string;
     address: string;
+    due?: number;
   };
 }
 
-// Mock implementation of react-to-print until it can be installed
-
 export function OrderDetails() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
+  const [isDuplicating, setIsDuplicating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [order, setOrder] = useState<Order | null>(null);
-  const invoiceRef = useRef<HTMLDivElement>(null);
-
-  console.log(order);
 
   useEffect(() => {
     const fetchOrderDetails = async () => {
@@ -93,6 +93,65 @@ export function OrderDetails() {
       return (order.subTotal * order.discount.value) / 100;
     }
     return order.discount.value;
+  };
+
+  // Duplicate the current sales order
+  const handleDuplicate = async () => {
+    if (!order) return;
+
+    setIsDuplicating(true);
+    try {
+      // Create a new order object based on the current one
+      const newOrderData = {
+        customer: order.customer._id,
+        reference: order.reference,
+        paymentTerms: order.paymentTerms,
+        deliveryMethod: order.deliveryMethod,
+        salesPerson: order.salesPerson,
+
+        // Map items to include only necessary fields
+        items: order.items.map((item) => ({
+          item: item.item._id,
+          quantity: item.quantity,
+          rate: item.rate,
+          amount: item.amount,
+          discount: item.discount,
+        })),
+
+        discount: order.discount,
+        shippingCharges: order.shippingCharges,
+        adjustment: order.adjustment,
+        customerNotes: order.customerNotes,
+        termsAndConditions: order.termsAndConditions,
+
+        // Set as draft with no payment initially
+        status: "Draft",
+        payment: 0,
+
+        // Include previous due if available
+        previousDue: order.customer.due || 0,
+
+        // Current date for the new order
+        salesOrderDate: new Date(),
+      };
+
+      // Create the new sales order
+      const response = await apiClient.post(
+        "/sales-orders/create",
+        newOrderData
+      );
+
+      if (response.data.success) {
+        toast.success("Sales order duplicated successfully");
+        // Navigate to the new sales order
+        navigate(`/sales/${response.data.data._id}`);
+      }
+    } catch (error) {
+      console.error("Error duplicating sales order:", error);
+      toast.error("Failed to duplicate sales order");
+    } finally {
+      setIsDuplicating(false);
+    }
   };
 
   const handlePrint = () => {
@@ -209,6 +268,10 @@ export function OrderDetails() {
           
           .summary-row.paid {
             color: #059669;
+          }
+          
+          .summary-row.previous-due {
+            color: #9f1239;
           }
           
           .summary-row.due {
@@ -347,6 +410,17 @@ export function OrderDetails() {
                 <span>${formatCurrency(order.total)}</span>
               </div>
               
+              ${
+                order.previousDue > 0
+                  ? `
+              <div class="summary-row previous-due">
+                <span><strong>Previous Due:</strong></span>
+                <span>${formatCurrency(order.previousDue)}</span>
+              </div>
+              `
+                  : ""
+              }
+              
               <div class="summary-row paid">
                 <span><strong>Amount Paid:</strong></span>
                 <span>${formatCurrency(order.payment)}</span>
@@ -383,6 +457,39 @@ export function OrderDetails() {
     }
   };
 
+  // Convert Order to InvoiceData format for the InvoiceView component
+  const mapOrderToInvoiceData = (order: Order): InvoiceData => {
+    return {
+      id: order._id,
+      invoiceNumber: order.orderNumber,
+      date: order.salesOrderDate,
+      customer: {
+        name: order.customer.customerName,
+        email: order.customer.email,
+        phone: order.customer.contactNumber,
+        address: order.customer.address,
+      },
+      items: order.items.map((item) => ({
+        name: item.item.name,
+        warranty: item.item.warranty,
+        price: item.rate,
+        quantity: item.quantity,
+        total: item.amount,
+      })),
+      subtotal: order.subTotal,
+      discount: order.discount,
+      shippingCharges: order.shippingCharges,
+      adjustment: order.adjustment,
+      total: order.total,
+      previousDue: order.previousDue,
+      payment: order.payment,
+      due: order.due,
+      notes: order.customerNotes,
+      terms: order.termsAndConditions,
+      status: order.status,
+    };
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -408,195 +515,13 @@ export function OrderDetails() {
     );
   }
 
+  // Use our new InvoiceView component
   return (
-    <div className="max-w-4xl mx-auto p-8 font-sans text-sm">
-      {/* Print Button */}
-      <div className="flex justify-end mb-4">
-        <Button onClick={handlePrint} className="flex items-center gap-2">
-          <Printer className="h-4 w-4" /> Print Invoice
-        </Button>
-      </div>
-
-      {/* Invoice Content */}
-      <div ref={invoiceRef}>
-        {/* Header */}
-        <div className="flex justify-between items-start mb-6">
-          {/* Company Info */}
-          <div>
-            <img
-              src="https://i.ibb.co.com/pB683QWW/material-management.png"
-              alt="Logo"
-              className="mb-2 w-24"
-            />
-            <h2 className="text-xl font-bold text-gray-800">
-              Inventory Management System
-            </h2>
-            <p>Dhaka, Bangladesh</p>
-            <p>Mobile: +8801717171717 (Office)</p>
-            <p>Mobile: +8801717171717 (Sales)</p>
-            <p>Email: inventory@gmail.com</p>
-            <p>Sold By: {order?.customer.customerName ?? "N/A"}</p>
-          </div>
-
-          {/* Invoice Info */}
-          <div className="text-right">
-            <h2 className="text-lg font-semibold text-gray-700">Invoice</h2>
-            <p>
-              <span className="font-semibold">Invoice No:</span>{" "}
-              {order.orderNumber}
-            </p>
-            <p>
-              <span className="font-semibold">Invoice Date:</span>{" "}
-              {format(new Date(order.salesOrderDate), "dd/MM/yyyy")}
-            </p>
-
-            <div className="mt-4">
-              <h3 className="font-bold text-gray-700">Bill To</h3>
-              <p>
-                <span className="font-semibold">Name:</span>{" "}
-                {order.customer.customerName}
-              </p>
-              <p>
-                <span className="font-semibold">Mobile:</span>{" "}
-                {order.customer.contactNumber || "N/A"}
-              </p>
-              <p>
-                <span className="font-semibold">Address:</span>{" "}
-                {order.customer.address || "N/A"}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Table */}
-        <table className="w-full table-auto border border-gray-300 mb-4 text-sm">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="border px-3 py-2 text-left">SL</th>
-              <th className="border px-3 py-2 text-left">Item</th>
-              <th className="border px-3 py-2 text-left">Warranty</th>
-              <th className="border px-3 py-2 text-left">Price</th>
-              <th className="border px-3 py-2 text-left">Quantity</th>
-              <th className="border px-3 py-2 text-left">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {order.items.map((item, index) => (
-              <tr
-                key={index}
-                className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                <td className="border px-3 py-2">{index + 1}</td>
-                <td className="border px-3 py-2">{item.item.name}</td>
-                <td className="border px-3 py-2">
-                  {item.item.warranty || "N/A"}
-                </td>
-                <td className="border px-3 py-2">
-                  Tk{" "}
-                  {item.rate.toLocaleString("en-US", {
-                    minimumFractionDigits: 2,
-                  })}
-                </td>
-                <td className="border px-3 py-2">{item.quantity}</td>
-                <td className="border px-3 py-2">
-                  Tk{" "}
-                  {item.amount.toLocaleString("en-US", {
-                    minimumFractionDigits: 2,
-                  })}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        {/* Summary */}
-        <div className="flex justify-end">
-          <div className="w-1/2">
-            <div className="flex justify-between border-b py-2">
-              <span className="font-semibold">Subtotal:</span>
-              <span>
-                Tk{" "}
-                {order.subTotal.toLocaleString("en-US", {
-                  minimumFractionDigits: 2,
-                })}
-              </span>
-            </div>
-
-            {order.discount.value > 0 && (
-              <div className="flex justify-between border-b py-2">
-                <span className="font-semibold">
-                  Discount{" "}
-                  {order.discount.type === "percentage"
-                    ? `(${order.discount.value}%)`
-                    : ""}
-                  :
-                </span>
-                <span>
-                  Tk{" "}
-                  {calculateDiscountAmount().toLocaleString("en-US", {
-                    minimumFractionDigits: 2,
-                  })}
-                </span>
-              </div>
-            )}
-
-            {order.shippingCharges > 0 && (
-              <div className="flex justify-between border-b py-2">
-                <span className="font-semibold">Shipping Charges:</span>
-                <span>
-                  Tk{" "}
-                  {order.shippingCharges.toLocaleString("en-US", {
-                    minimumFractionDigits: 2,
-                  })}
-                </span>
-              </div>
-            )}
-
-            {order.adjustment !== 0 && (
-              <div className="flex justify-between border-b py-2">
-                <span className="font-semibold">Adjustment:</span>
-                <span>
-                  Tk{" "}
-                  {order.adjustment.toLocaleString("en-US", {
-                    minimumFractionDigits: 2,
-                  })}
-                </span>
-              </div>
-            )}
-
-            <div className="flex justify-between border-b py-2 font-bold">
-              <span>Total:</span>
-              <span>
-                Tk{" "}
-                {order.total.toLocaleString("en-US", {
-                  minimumFractionDigits: 2,
-                })}
-              </span>
-            </div>
-
-            <div className="flex justify-between border-b py-2">
-              <span className="font-semibold">Amount Paid:</span>
-              <span className="text-green-600">
-                Tk{" "}
-                {order.payment.toLocaleString("en-US", {
-                  minimumFractionDigits: 2,
-                })}
-              </span>
-            </div>
-
-            {order.due > 0 && (
-              <div className="flex justify-between py-2 font-bold">
-                <span>Balance Due:</span>
-                <span className="text-red-500">
-                  Tk{" "}
-                  {order.due.toLocaleString("en-US", {
-                    minimumFractionDigits: 2,
-                  })}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
+    <InvoiceView
+      invoice={mapOrderToInvoiceData(order)}
+      onPrint={handlePrint}
+      onDuplicate={handleDuplicate}
+      isDuplicating={isDuplicating}
+    />
   );
 }

@@ -63,6 +63,14 @@ function App() {
             </DashboardLayout>
           }
         />
+        <Route
+          path="/dashboard/sales/:id"
+          element={
+            <DashboardLayout>
+              <OrderDetails />
+            </DashboardLayout>
+          }
+        />
 
         {/* Order routes */}
         <Route
@@ -73,7 +81,24 @@ function App() {
             </DashboardLayout>
           }
         />
-        <Route path="/dashboard/orders/:id" element={<OrderDetails />} />
+        <Route
+          path="/dashboard/orders/:id"
+          element={
+            <DashboardLayout>
+              <OrderDetails />
+            </DashboardLayout>
+          }
+        />
+
+        {/* Invoice routes */}
+        <Route
+          path="/dashboard/invoices"
+          element={
+            <DashboardLayout>
+              <SalesPage />
+            </DashboardLayout>
+          }
+        />
       </Routes>
     </>
   );

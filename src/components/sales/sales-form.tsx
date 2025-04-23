@@ -176,7 +176,7 @@ export function SalesForm({
     return total;
   };
 
-  const calculateTotalDue = () => {
+  const calculateCurrentDue = () => {
     const currentTotal = calculateTotal(
       calculateSubTotal(form.watch("items")),
       form.watch("discount"),
@@ -185,7 +185,11 @@ export function SalesForm({
     );
 
     const payment = form.watch("payment") || 0;
-    const currentDue = currentTotal - payment;
+    return currentTotal - payment;
+  };
+
+  const calculateTotalDue = () => {
+    const currentDue = calculateCurrentDue();
 
     // If we're including previous due and have a selected customer with due
     if (includePreviousDue && selectedCustomer?.due) {
@@ -231,9 +235,13 @@ export function SalesForm({
     try {
       setIsLoading(true);
 
+      const previousDue =
+        includePreviousDue && selectedCustomer?.due ? selectedCustomer.due : 0;
+
       const formData = {
         ...data,
-        // Calculate due amount, including previous due if selected
+        previousDue,
+        // Calculate current due amount without previous due
         due: calculateTotalDue(),
         includePreviousDue,
       };
@@ -1072,24 +1080,6 @@ export function SalesForm({
                           />
                         </div>
 
-                        {/* Current Invoice Due */}
-                        <div className="flex justify-between items-center pt-2">
-                          <span className="text-sm font-medium">
-                            Current Invoice Due:
-                          </span>
-                          <span className="font-medium">
-                            {(
-                              calculateTotal(
-                                calculateSubTotal(form.watch("items")),
-                                form.watch("discount"),
-                                form.watch("shippingCharges"),
-                                form.watch("adjustment")
-                              ) - form.watch("payment")
-                            ).toFixed(2)}{" "}
-                            tk
-                          </span>
-                        </div>
-
                         {/* Previous Due */}
                         {selectedCustomer?.due ? (
                           <div className="pt-3 border-t border-dashed">
@@ -1142,6 +1132,16 @@ export function SalesForm({
                             </div>
                           </div>
                         ) : null}
+
+                        {/* Current Due - without previous due */}
+                        <div className="flex justify-between items-center pt-2">
+                          <span className="text-sm font-medium">
+                            Current Invoice Due:
+                          </span>
+                          <span className="font-medium">
+                            {calculateCurrentDue().toFixed(2)} tk
+                          </span>
+                        </div>
 
                         {/* Total Due - includes previous due if selected */}
                         <div className="flex justify-between items-center pt-3 mt-2 border-t border-primary">
