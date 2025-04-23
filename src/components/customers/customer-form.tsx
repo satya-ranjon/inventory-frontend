@@ -83,6 +83,33 @@ export function CustomerForm({
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+
+      // Check if there are any validation errors before submitting
+      const fieldErrors = form.formState.errors;
+      const hasErrors = Object.keys(fieldErrors).length > 0;
+
+      // Get current values
+      const values = form.getValues();
+
+      // Check if required fields are filled
+      const isMissingRequiredFields =
+        (values.customerType === "Business" &&
+          (!values.email || !values.address)) ||
+        !values.customerName ||
+        !values.contactNumber;
+
+      if (!hasErrors && !isMissingRequiredFields) {
+        form.handleSubmit(onSubmit)();
+      } else {
+        // Trigger validation to show errors
+        form.trigger();
+      }
+    }
+  };
+
   return (
     <div>
       {/* Dialog Trigger */}
@@ -108,7 +135,13 @@ export function CustomerForm({
             </button>
 
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)}>
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                  }
+                }}>
                 <Card className="border-0 shadow-none">
                   <CardHeader className="pb-3">
                     <CardTitle>
@@ -154,7 +187,11 @@ export function CustomerForm({
                             <FormItem>
                               <FormLabel>Customer Name</FormLabel>
                               <FormControl>
-                                <Input {...field} />
+                                <Input
+                                  {...field}
+                                  autoComplete="off"
+                                  onKeyDown={handleKeyDown}
+                                />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -168,7 +205,11 @@ export function CustomerForm({
                             <FormItem>
                               <FormLabel>Contact Number</FormLabel>
                               <FormControl>
-                                <Input {...field} />
+                                <Input
+                                  {...field}
+                                  autoComplete="off"
+                                  onKeyDown={handleKeyDown}
+                                />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -182,7 +223,12 @@ export function CustomerForm({
                             <FormItem>
                               <FormLabel>Email</FormLabel>
                               <FormControl>
-                                <Input type="email" {...field} />
+                                <Input
+                                  type="email"
+                                  {...field}
+                                  autoComplete="off"
+                                  onKeyDown={handleKeyDown}
+                                />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -201,6 +247,37 @@ export function CustomerForm({
                                 placeholder="Enter complete address"
                                 className="min-h-[100px]"
                                 {...field}
+                                autoComplete="off"
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" && !e.shiftKey) {
+                                    e.preventDefault();
+
+                                    // Check if there are any validation errors before submitting
+                                    const fieldErrors = form.formState.errors;
+                                    const hasErrors =
+                                      Object.keys(fieldErrors).length > 0;
+
+                                    // Get current values
+                                    const values = form.getValues();
+
+                                    // Check if required fields are filled
+                                    const isMissingRequiredFields =
+                                      (values.customerType === "Business" &&
+                                        (!values.email || !values.address)) ||
+                                      !values.customerName ||
+                                      !values.contactNumber;
+
+                                    if (
+                                      !hasErrors &&
+                                      !isMissingRequiredFields
+                                    ) {
+                                      form.handleSubmit(onSubmit)();
+                                    } else {
+                                      // Trigger validation to show errors
+                                      form.trigger();
+                                    }
+                                  }
+                                }}
                               />
                             </FormControl>
                             <FormMessage />

@@ -119,30 +119,31 @@ export function SalesForm({
         {
           item: "",
           quantity: 1,
-          rate: 0,
-          amount: 0,
-          discount: 0,
+          rate: undefined,
+          amount: undefined,
+          discount: undefined,
         },
       ],
       discount: {
         type: "percentage",
-        value: 0,
+        value: undefined,
       },
-      shippingCharges: 0,
-      adjustment: 0,
+      shippingCharges: undefined,
+      adjustment: undefined,
       customerNotes: defaultNotes,
       termsAndConditions: defaultTerms,
       status: "Draft",
-      payment: 0,
+      payment: undefined,
     },
   });
 
   // Calculate totals
   const calculateItemAmount = (
-    quantity: number,
-    rate: number,
+    quantity: number | undefined,
+    rate: number | undefined,
     discount = 0
   ) => {
+    if (!quantity || !rate) return 0;
     const amount = quantity * rate;
     return discount ? amount - discount : amount;
   };
@@ -154,18 +155,20 @@ export function SalesForm({
   const calculateTotal = (
     subtotal: number,
     discount: SalesFormValues["discount"],
-    shipping: number,
-    adjustment: number
+    shipping: number | undefined,
+    adjustment: number | undefined
   ) => {
     let total = subtotal;
+    const shippingValue = shipping || 0;
+    const adjustmentValue = adjustment || 0;
 
-    if (discount.type === "percentage") {
+    if (discount.type === "percentage" && discount.value !== undefined) {
       total = total * (1 - discount.value / 100);
-    } else {
+    } else if (discount.value !== undefined) {
       total = total - discount.value;
     }
 
-    total = total + shipping + adjustment;
+    total = total + shippingValue - adjustmentValue;
     return total;
   };
 
@@ -228,14 +231,46 @@ export function SalesForm({
     try {
       setIsLoading(true);
 
+      // Ensure all required fields have valid values
+      const items = data.items.map((item) => ({
+        ...item,
+        rate: item.rate || 0,
+        amount: item.amount || 0,
+        discount: item.discount || 0,
+      }));
+
+      // Calculate total with safeguards against NaN
+      const subtotal = calculateSubTotal(items);
+      const discount = {
+        ...data.discount,
+        value: data.discount.value || 0,
+      };
+
+      const shippingCharges = data.shippingCharges || 0;
+      const adjustment = data.adjustment || 0;
+      const payment = data.payment || 0;
+
+      // Safely calculate total and due amounts
+      const total = calculateTotal(
+        subtotal,
+        discount,
+        shippingCharges,
+        adjustment
+      );
       const previousDue =
         includePreviousDue && selectedCustomer?.due ? selectedCustomer.due : 0;
+      const due = total - payment + previousDue;
 
       const formData = {
         ...data,
+        items,
+        discount,
+        shippingCharges,
+        adjustment,
+        payment,
         previousDue,
-        // Calculate current due amount without previous due
-        due: calculateTotalDue(),
+        total,
+        due,
         includePreviousDue,
       };
 
@@ -353,7 +388,12 @@ export function SalesForm({
               <Form {...form}>
                 <form
                   onSubmit={form.handleSubmit(onSubmit)}
-                  className="space-y-8">
+                  className="space-y-8"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                    }
+                  }}>
                   {/* Basic Information Section */}
                   <div className="rounded-md border border-muted p-4 space-y-4">
                     <h4 className="text-sm font-semibold text-muted-foreground mb-2">
@@ -446,6 +486,7 @@ export function SalesForm({
                                 placeholder="PO number or reference"
                                 {...field}
                                 className="bg-background"
+                                autoComplete="off"
                               />
                             </FormControl>
                             <FormMessage />
@@ -508,6 +549,7 @@ export function SalesForm({
                                 placeholder="e.g. Net 30"
                                 {...field}
                                 className="bg-background"
+                                autoComplete="off"
                               />
                             </FormControl>
                             <FormMessage />
@@ -529,6 +571,7 @@ export function SalesForm({
                                 placeholder="e.g. Standard Shipping"
                                 {...field}
                                 className="bg-background"
+                                autoComplete="off"
                               />
                             </FormControl>
                             <FormMessage />
@@ -550,6 +593,7 @@ export function SalesForm({
                                 placeholder="Sales representative"
                                 {...field}
                                 className="bg-background"
+                                autoComplete="off"
                               />
                             </FormControl>
                             <FormMessage />
@@ -675,12 +719,15 @@ export function SalesForm({
                                 <FormItem>
                                   <FormControl>
                                     <Input
-                                      type="number"
-                                      min="1"
+                                      type="text"
                                       className="text-center"
                                       {...field}
                                       onChange={(e) => {
-                                        field.onChange(Number(e.target.value));
+                                        const value =
+                                          e.target.value === ""
+                                            ? undefined
+                                            : Number(e.target.value);
+                                        field.onChange(value);
                                         updateItemAmount(index);
                                       }}
                                     />
@@ -700,13 +747,16 @@ export function SalesForm({
                                 <FormItem>
                                   <FormControl>
                                     <Input
-                                      type="number"
-                                      step="0.01"
-                                      min="0"
+                                      type="text"
                                       className="text-center"
+                                      autoComplete="off"
                                       {...field}
                                       onChange={(e) => {
-                                        field.onChange(Number(e.target.value));
+                                        const value =
+                                          e.target.value === ""
+                                            ? undefined
+                                            : Number(e.target.value);
+                                        field.onChange(value);
                                         updateItemAmount(index);
                                       }}
                                     />
@@ -726,18 +776,21 @@ export function SalesForm({
                                 <FormItem>
                                   <FormControl>
                                     <Input
-                                      type="number"
-                                      step="0.01"
-                                      min="0"
+                                      type="text"
                                       className="text-center"
+                                      autoComplete="off"
                                       {...field}
-                                      value={field.value || ""}
+                                      value={
+                                        field.value === undefined
+                                          ? ""
+                                          : field.value
+                                      }
                                       onChange={(e) => {
-                                        field.onChange(
+                                        const value =
                                           e.target.value === ""
                                             ? undefined
-                                            : Number(e.target.value)
-                                        );
+                                            : Number(e.target.value);
+                                        field.onChange(value);
                                         updateItemAmount(index);
                                       }}
                                     />
@@ -757,11 +810,17 @@ export function SalesForm({
                                 <FormItem>
                                   <FormControl>
                                     <Input
-                                      type="number"
-                                      step="0.01"
+                                      type="text"
                                       readOnly
                                       className="text-right font-medium bg-muted/20"
-                                      {...field}
+                                      {...(() => {
+                                        const { value, ...restField } = field;
+                                        return {
+                                          ...restField,
+                                          value:
+                                            value === undefined ? "" : value,
+                                        };
+                                      })()}
                                     />
                                   </FormControl>
                                   <FormMessage />
@@ -955,14 +1014,24 @@ export function SalesForm({
                                 </FormLabel>
                                 <FormControl>
                                   <Input
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
+                                    type="text"
                                     className="h-8 text-xs bg-background"
-                                    {...field}
-                                    onChange={(e) =>
-                                      field.onChange(Number(e.target.value))
-                                    }
+                                    autoComplete="off"
+                                    {...(() => {
+                                      const { value, onChange, ...restField } =
+                                        field;
+                                      return {
+                                        ...restField,
+                                        value: value === undefined ? "" : value,
+                                        onChange: (e) => {
+                                          const newValue =
+                                            e.target.value === ""
+                                              ? undefined
+                                              : Number(e.target.value);
+                                          onChange(newValue);
+                                        },
+                                      };
+                                    })()}
                                   />
                                 </FormControl>
                                 <FormMessage />
@@ -975,8 +1044,8 @@ export function SalesForm({
                           <span>Discount Amount:</span>
                           <span>
                             {form.watch("discount").type === "percentage"
-                              ? `${form.watch("discount").value}% (${((calculateSubTotal(form.watch("items")) * form.watch("discount").value) / 100).toFixed(2)} tk)`
-                              : `${form.watch("discount").value.toFixed(2)} tk`}
+                              ? `${form.watch("discount").value || 0}% (${((calculateSubTotal(form.watch("items")) * (form.watch("discount").value || 0)) / 100).toFixed(2)} tk)`
+                              : `${(form.watch("discount").value || 0).toFixed(2)} tk`}
                           </span>
                         </div>
 
@@ -992,14 +1061,24 @@ export function SalesForm({
                                 </FormLabel>
                                 <FormControl>
                                   <Input
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
+                                    type="text"
                                     className="h-8 text-xs bg-background"
-                                    {...field}
-                                    onChange={(e) =>
-                                      field.onChange(Number(e.target.value))
-                                    }
+                                    autoComplete="off"
+                                    {...(() => {
+                                      const { value, onChange, ...restField } =
+                                        field;
+                                      return {
+                                        ...restField,
+                                        value: value === undefined ? "" : value,
+                                        onChange: (e) => {
+                                          const newValue =
+                                            e.target.value === ""
+                                              ? undefined
+                                              : Number(e.target.value);
+                                          onChange(newValue);
+                                        },
+                                      };
+                                    })()}
                                   />
                                 </FormControl>
                                 <FormMessage />
@@ -1017,13 +1096,24 @@ export function SalesForm({
                                 </FormLabel>
                                 <FormControl>
                                   <Input
-                                    type="number"
-                                    step="0.01"
+                                    type="text"
                                     className="h-8 text-xs bg-background"
-                                    {...field}
-                                    onChange={(e) =>
-                                      field.onChange(Number(e.target.value))
-                                    }
+                                    autoComplete="off"
+                                    {...(() => {
+                                      const { value, onChange, ...restField } =
+                                        field;
+                                      return {
+                                        ...restField,
+                                        value: value === undefined ? "" : value,
+                                        onChange: (e) => {
+                                          const newValue =
+                                            e.target.value === ""
+                                              ? undefined
+                                              : Number(e.target.value);
+                                          onChange(newValue);
+                                        },
+                                      };
+                                    })()}
                                   />
                                 </FormControl>
                                 <FormMessage />
@@ -1057,14 +1147,24 @@ export function SalesForm({
                                 </FormLabel>
                                 <FormControl>
                                   <Input
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
+                                    type="text"
                                     className="bg-background"
-                                    {...field}
-                                    onChange={(e) =>
-                                      field.onChange(Number(e.target.value))
-                                    }
+                                    autoComplete="off"
+                                    {...(() => {
+                                      const { value, onChange, ...restField } =
+                                        field;
+                                      return {
+                                        ...restField,
+                                        value: value === undefined ? "" : value,
+                                        onChange: (e) => {
+                                          const newValue =
+                                            e.target.value === ""
+                                              ? undefined
+                                              : Number(e.target.value);
+                                          onChange(newValue);
+                                        },
+                                      };
+                                    })()}
                                   />
                                 </FormControl>
                                 <FormMessage />

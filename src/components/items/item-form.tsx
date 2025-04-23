@@ -40,9 +40,9 @@ export function ItemForm({
     resolver: zodResolver(itemSchema),
     defaultValues: initialData || {
       name: "",
-      quantity: 0,
+      quantity: undefined,
       warranty: "",
-      price: 0,
+      price: undefined,
     },
   });
 
@@ -99,6 +99,11 @@ export function ItemForm({
             <div className="space-y-6 py-2">
               <Form {...form}>
                 <form
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                    }
+                  }}
                   onSubmit={form.handleSubmit(onSubmit)}
                   className="space-y-6">
                   <div className="grid gap-6 md:grid-cols-2">

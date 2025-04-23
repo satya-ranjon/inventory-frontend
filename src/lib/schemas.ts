@@ -51,6 +51,7 @@ export const customerSchema = z
     email: z.string().email().optional(),
     address: z.string().optional(),
     customerType: z.enum(["Business", "Individual"]),
+    requiredFields: z.array(z.string()).optional(),
   })
   .refine(
     (data) => {
@@ -98,22 +99,17 @@ export const salesSchema = z.object({
   paymentTerms: z.string().optional(),
   deliveryMethod: z.string().optional(),
   salesPerson: z.string().optional(),
-  items: z
-    .array(salesItemSchema)
-    .min(1, "At least one item is required"),
+  items: z.array(salesItemSchema).min(1, "At least one item is required"),
   discount: z.object({
     type: z.enum(["percentage", "fixed"]),
-    value: z.number().min(0),
+    value: z.number().optional(),
   }),
-  shippingCharges: z.number().min(0),
-  adjustment: z.number(),
+  shippingCharges: z.number().optional(),
+  adjustment: z.number().optional(),
   customerNotes: z.string().optional(),
   termsAndConditions: z.string().optional(),
   status: z.enum(["Draft", "Confirmed", "Shipped", "Delivered", "Cancelled"]),
-  payment: z.number().min(0),
+  payment: z.number().optional(),
 });
 
 export type SalesFormValues = z.infer<typeof salesSchema>;
-
-
-
