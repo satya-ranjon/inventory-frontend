@@ -342,34 +342,42 @@ export function SalesPage() {
   const fetchSalesOrders = async (pageToFetch = pagination.page) => {
     setIsLoading(true);
     try {
-      console.log("Fetching sales orders for page:", pageToFetch);
+      // Important debug logging to track request
+      console.log("FETCH: Explicitly requesting page:", pageToFetch);
 
+      // Make API request with explicit page number - ensure it's sent as a string
       const response = await apiClient.get(
-        `/sales-orders?page=${pageToFetch}&limit=${pagination.limit}`
+        `/sales-orders?page=${String(pageToFetch)}&limit=${pagination.limit}`
       );
 
-      console.log("API Response:", response.data);
+      console.log("FETCH: API Response:", response.data);
 
       // Check if the response follows the expected structure
       if (response.data && response.data.data) {
         // The actual data is nested inside response.data.data
         const salesData = response.data.data.data || [];
-        console.log("Sales data extracted:", salesData.length, "items");
+        console.log("FETCH: Sales data length:", salesData.length);
+
+        // CRITICAL: Update both state values in the same render cycle
+        // First update sales orders data
         setSalesOrders(salesData);
 
-        // Update pagination from meta
+        // Update pagination and summary in same render cycle
         const meta = response.data.data.meta || {};
-        console.log("Meta data:", meta);
+        console.log("FETCH: Meta data:", meta);
 
-        // Important: Update with the page we requested, not what might come in the response
-        // This ensures we're showing the right page of data
-        setPagination({
-          page: pageToFetch, // Use the page we requested, not what comes back from API
+        // Force the page to be the one we requested, not what API returns
+        const updatedPagination = {
+          page: parseInt(String(pageToFetch)), // Ensure page is a number
           limit: parseInt(meta.limit) || 8,
           total: parseInt(meta.total) || 0,
-        });
+        };
 
-        // Update summary from meta
+        // Update pagination state
+        setPagination(updatedPagination);
+        console.log("FETCH: Updated pagination to:", updatedPagination);
+
+        // Update summary
         setSummary({
           count: parseInt(meta.total) || 0,
           total: parseFloat(meta.totalAmount) || 0,
@@ -378,15 +386,22 @@ export function SalesPage() {
         });
       } else {
         // Fallback for older API structure
-        console.log("Using fallback API structure");
+        console.log("FETCH: Using fallback API structure");
+
+        // Update the sales orders
         setSalesOrders(response.data.data || []);
-        setPagination({
-          page: pageToFetch, // Use the page we requested, not what comes back from API
+
+        // Directly set pagination without relying on API's returned page
+        const updatedPagination = {
+          page: parseInt(String(pageToFetch)), // Ensure page is a number
           limit: parseInt(response.data.meta?.limit) || 8,
           total: parseInt(response.data.meta?.total) || 0,
-        });
+        };
 
-        // Update summary with fallback
+        setPagination(updatedPagination);
+        console.log("FETCH: Updated pagination to:", updatedPagination);
+
+        // Update summary
         setSummary({
           count: parseInt(response.data.meta?.total) || 0,
           total: parseFloat(response.data.meta?.totalAmount) || 0,
@@ -397,8 +412,9 @@ export function SalesPage() {
 
       // Update the last page ref after a successful fetch
       lastPageRef.current = pageToFetch;
+      console.log("FETCH: Updated lastPageRef to:", pageToFetch);
     } catch (err) {
-      console.error("Error fetching sales orders:", err);
+      console.error("FETCH: Error fetching sales orders:", err);
       toast.error("Something went wrong while fetching sales orders.");
     } finally {
       setIsLoading(false);
@@ -412,39 +428,6 @@ export function SalesPage() {
 
   const handleRefresh = () => {
     fetchSalesOrders();
-  };
-
-  // Custom pagination handlers to directly fetch the right page
-  const handlePrevPage = () => {
-    if (pagination.page > 1) {
-      const prevPage = pagination.page - 1;
-      if (!isFilteringRef.current) {
-        // For server-side pagination, fetch the data directly without updating state first
-        fetchSalesOrders(prevPage);
-      } else {
-        // For client-side filtering, just update the page
-        setPagination((prev) => ({ ...prev, page: prevPage }));
-      }
-    }
-  };
-
-  const handleNextPage = () => {
-    const maxPage = isFilteringRef.current
-      ? Math.max(Math.ceil(filteredSalesOrders.length / pagination.limit), 1)
-      : Math.max(Math.ceil(pagination.total / pagination.limit), 1);
-
-    if (pagination.page < maxPage) {
-      const nextPage = pagination.page + 1;
-      console.log("Moving to next page:", nextPage);
-
-      if (!isFilteringRef.current) {
-        // For server-side pagination, fetch the data directly without updating state first
-        fetchSalesOrders(nextPage);
-      } else {
-        // For client-side filtering, just update the page
-        setPagination((prev) => ({ ...prev, page: nextPage }));
-      }
-    }
   };
 
   // Delete a sales order
@@ -901,6 +884,36 @@ export function SalesPage() {
   // Check if there's any data or if we're still loading
   const hasNoData = !isLoading && salesOrders.length === 0;
 
+  // Handle direct page change (e.g., from pagination component)
+  const onPageChange = (page: number) => {
+    console.log("PAGE: Direct page change requested to page", page);
+
+    // Validate page number
+    if (page < 1) {
+      console.log("PAGE: Invalid page number, must be >= 1");
+      return;
+    }
+
+    const totalPages = Math.ceil(pagination.total / pagination.limit);
+    if (page > totalPages) {
+      console.log("PAGE: Page number exceeds total pages", totalPages);
+      return;
+    }
+
+    // Handle pagination differently based on filtering state
+    if (isFilteringRef.current) {
+      console.log("PAGE: Filtering is active, updating page state only");
+      setPagination((prev) => ({
+        ...prev,
+        page,
+      }));
+    } else {
+      console.log("PAGE: Fetching page data from server");
+      // Directly call fetchSalesOrders with the requested page number
+      fetchSalesOrders(page);
+    }
+  };
+
   return (
     <div className="container mx-auto p-4 space-y-6">
       <div className="flex justify-between items-center">
@@ -1168,7 +1181,7 @@ export function SalesPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={handlePrevPage}
+            onClick={() => onPageChange(pagination.page - 1)}
             disabled={pagination.page === 1}>
             Previous
           </Button>
@@ -1184,7 +1197,7 @@ export function SalesPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={handleNextPage}
+            onClick={() => onPageChange(pagination.page + 1)}
             disabled={
               searchTerm || statusFilter !== "all"
                 ? pagination.page >=
