@@ -8,12 +8,10 @@ import { ItemsPage } from "./pages/items/items-page";
 import { SalesPage } from "./pages/sales/sales-page";
 import { OrderDetails } from "./pages/sales/order-details";
 import { DashboardPage } from "./pages/dashboard/dashboard-page";
-import { InitUploadThing } from "./components/ui/init-uploadthing";
 
 function App() {
   return (
     <>
-      <InitUploadThing />
       <Routes>
         <Route path="/" element={<LoginForm />} />
         <Route path="/register" element={<RegisterForm />} />
