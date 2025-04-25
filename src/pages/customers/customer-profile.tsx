@@ -574,8 +574,8 @@ export function CustomerProfile() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
-        <Card className="lg:col-span-1">
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 mb-6">
+        <Card className="lg:col-span-1 w-full">
           <CardContent className="pt-6">
             <div className="flex flex-col items-center">
               <Avatar className="h-24 w-24 mb-4">
