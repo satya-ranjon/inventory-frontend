@@ -100,7 +100,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         <Button
           variant="ghost"
           size="icon"
-          className="fixed top-4 left-4 md:hidden z-50"
+          className="fixed top-4 left-4 md:hidden "
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
           {isMobileMenuOpen ? (
             <X className="h-6 w-6" />
@@ -112,7 +112,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         {/* Overlay for mobile when sidebar is open */}
         {isMobileMenuOpen && (
           <div
-            className="fixed inset-0 bg-black/20 z-30 md:hidden"
+            className="fixed inset-0 bg-black/20 md:hidden"
             onClick={() => setIsMobileMenuOpen(false)}
           />
         )}
