@@ -33,7 +33,8 @@ function NavItem({ href, icon, label, isActive, onClick }: NavItemProps) {
           ? "bg-gray-100 text-gray-900"
           : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"
       }`}
-      onClick={onClick}>
+      onClick={onClick}
+    >
       {icon}
       {label}
     </Link>
@@ -136,7 +137,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         <Button
           variant="ghost"
           className="w-full justify-start text-gray-500 hover:text-gray-900 hover:bg-gray-50"
-          onClick={handleLogout}>
+          onClick={handleLogout}
+        >
           <LogOut className="mr-3 h-5 w-5" />
           Logout
         </Button>
@@ -160,7 +162,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         {isMobile && (
           <button
             className="fixed top-4 left-4 z-30 rounded-md bg-white p-2 shadow-md"
-            onClick={() => setIsMobileMenuOpen(true)}>
+            onClick={() => setIsMobileMenuOpen(true)}
+          >
             <Menu className="h-6 w-6" />
           </button>
         )}
