@@ -9,12 +9,14 @@ import {
   LogOut,
   Menu,
   X,
+  Settings,
 } from "lucide-react";
 
 import { Button } from "../ui/button";
 import { useAuth } from "../../hooks/use-auth";
 import { useAuthStore } from "../../stores/auth-store";
 import { AuthGuard } from "./auth-guard";
+import { TPermission } from "../../types/auth";
 
 interface NavItemProps {
   href: string;
@@ -70,28 +72,56 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("resize", checkWindowSize);
   }, []);
 
+  // Function to check if user has permission
+  const hasPermission = (permission?: TPermission): boolean => {
+    // Admin has all permissions
+    if (user?.role === "admin") return true;
+
+    // If no specific permission is required
+    if (!permission) return true;
+
+    // Check user permissions
+    return user?.permissions?.includes(permission) || false;
+  };
+
   const navItems = [
     {
       href: "/dashboard",
       icon: <BarChart3 className="h-5 w-5" />,
       label: "Dashboard",
+      permission: "dashboard" as TPermission,
     },
     {
       href: "/dashboard/items",
       icon: <Package className="h-5 w-5" />,
       label: "Items",
+      permission: "item" as TPermission,
     },
     {
       href: "/dashboard/customers",
       icon: <Users className="h-5 w-5" />,
       label: "Customers",
+      permission: "customer" as TPermission,
     },
     {
       href: "/dashboard/sales",
       icon: <ShoppingCart className="h-5 w-5" />,
       label: "Sales Orders",
+      permission: "sales" as TPermission,
+    },
+    {
+      href: "/dashboard/settings",
+      icon: <Settings className="h-5 w-5" />,
+      label: "Settings",
+      // Everyone has access to their own settings
+      permission: undefined,
     },
   ];
+
+  // Filter navigation items based on permissions
+  const filteredNavItems = navItems.filter((item) =>
+    hasPermission(item.permission)
+  );
 
   return (
     <AuthGuard>
@@ -147,11 +177,19 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <div className="mt-1 text-xs text-gray-500 capitalize">
                   Role: {user.role}
                 </div>
+                {user.permissions && user.permissions.length > 0 && (
+                  <div className="mt-1 text-xs text-gray-500">
+                    <span>Permissions: </span>
+                    <span className="capitalize">
+                      {user.permissions.join(", ")}
+                    </span>
+                  </div>
+                )}
               </div>
             )}
 
             <nav className="flex-1 space-y-1 p-4">
-              {navItems.map((item) => (
+              {filteredNavItems.map((item) => (
                 <NavItem
                   key={item.href}
                   href={item.href}
