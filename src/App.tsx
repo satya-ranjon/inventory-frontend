@@ -10,13 +10,15 @@ import { OrderDetails } from "./pages/sales/order-details";
 import { DashboardPage } from "./pages/dashboard/dashboard-page";
 import { PermissionGuard } from "./components/layout/permission-guard";
 import { SettingsPage } from "./pages/settings/settings-page";
+import HomePage from "./pages/home";
 
 function App() {
   return (
     <>
       <Routes>
-        <Route path="/" element={<LoginForm />} />
+        <Route path="/login" element={<LoginForm />} />
         <Route path="/register" element={<RegisterForm />} />
+        <Route path="/" element={<HomePage />} />
         <Route
           path="/dashboard"
           element={

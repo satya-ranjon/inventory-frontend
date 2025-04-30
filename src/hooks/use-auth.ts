@@ -231,7 +231,7 @@ export function useAuth() {
       });
 
       toast(`Login successful. Welcome back, ${user.name}!`);
-      navigate("/dashboard");
+      navigate("/");
     },
     onError: (error: ApiError) => {
       // Check for too many attempts
@@ -295,7 +295,7 @@ export function useAuth() {
         window.clearTimeout(refreshTimerRef.current);
         refreshTimerRef.current = null;
       }
-      navigate("/");
+      navigate("/login");
 
       toast("Logged out. You have been successfully logged out.");
     },
@@ -305,7 +305,7 @@ export function useAuth() {
         window.clearTimeout(refreshTimerRef.current);
         refreshTimerRef.current = null;
       }
-      navigate("/");
+      navigate("/login");
     },
   });
 
