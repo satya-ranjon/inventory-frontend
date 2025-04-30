@@ -33,7 +33,7 @@ import {
 import { Textarea } from "../ui/textarea";
 import apiClient from "@/lib/api-client";
 import { toast } from "sonner";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { Item } from "@/pages/items/items-page";
 import { SalesFormValues, salesSchema } from "@/lib/schemas";
@@ -101,6 +101,19 @@ export function SalesForm({
     null
   );
   const [includePreviousDue, setIncludePreviousDue] = useState(true);
+  const inputRefs = useRef<(HTMLElement | null)[]>([]);
+  const [openCustomerPopover, setOpenCustomerPopover] = useState(false);
+  const [openDatePopover, setOpenDatePopover] = useState(false);
+  const [openSelectStatus, setOpenSelectStatus] = useState(false);
+  const [openDiscountType, setOpenDiscountType] = useState(false);
+  const [openItemPopovers, setOpenItemPopovers] = useState<boolean[]>([]);
+
+  // Reset inputRefs when form opens
+  useEffect(() => {
+    if (isOpen) {
+      inputRefs.current = inputRefs.current.slice(0, 0);
+    }
+  }, [isOpen]);
 
   // Get default notes and terms
   const { defaultNotes, defaultTerms } = generateDefaultContent();
@@ -226,6 +239,14 @@ export function SalesForm({
     }
   }, [form.watch("customer"), customers]);
 
+  // Initialize item popovers state when items change
+  useEffect(() => {
+    if (form) {
+      const itemsCount = form.watch("items")?.length || 0;
+      setOpenItemPopovers(Array(itemsCount).fill(false));
+    }
+  }, [form?.watch("items")?.length]);
+
   // Handle form submission
   const onSubmit = async (data: SalesFormValues) => {
     try {
@@ -349,6 +370,81 @@ export function SalesForm({
     }
   };
 
+  // Handle key down event to focus on next field
+  const handleKeyDown = (
+    e: React.KeyboardEvent<HTMLElement>,
+    index: number
+  ) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+
+      // Find the next input field
+      const nextIndex = index + 1;
+      if (nextIndex < inputRefs.current.length) {
+        // Focus the next input field
+        inputRefs.current[nextIndex]?.focus();
+      } else {
+        // If last field, submit the form
+        form.handleSubmit(onSubmit)();
+      }
+    }
+  };
+
+  // Handler for selecting an option and moving to next field
+  const handleSelectAndAdvance = (
+    value: string,
+    onChange: (value: string) => void,
+    popoverSetter: React.Dispatch<React.SetStateAction<boolean>>,
+    index: number
+  ) => {
+    // Update the value
+    onChange(value);
+
+    // Close the popover
+    popoverSetter(false);
+
+    // After a short delay to allow state updates, focus the next field
+    setTimeout(() => {
+      const nextIndex = index + 1;
+      if (nextIndex < inputRefs.current.length) {
+        inputRefs.current[nextIndex]?.focus();
+      }
+    }, 50);
+  };
+
+  // Handler for item selection and advancing
+  const handleItemSelectAndAdvance = (itemId: string, index: number) => {
+    // Update the selected item and get rate
+    handleItemSelection(itemId, index);
+
+    // Close the popover
+    const newOpenStates = [...openItemPopovers];
+    newOpenStates[index] = false;
+    setOpenItemPopovers(newOpenStates);
+
+    // Focus the next field (quantity input)
+    setTimeout(() => {
+      const nextIndex = 7 + index * 4;
+      if (nextIndex < inputRefs.current.length) {
+        inputRefs.current[nextIndex]?.focus();
+      }
+    }, 50);
+  };
+
+  // Handler for focusing a select popover trigger
+  const handleSelectFocus = (
+    popoverSetter: React.Dispatch<React.SetStateAction<boolean>>
+  ) => {
+    popoverSetter(true);
+  };
+
+  // Handler for focusing an item's popover trigger
+  const handleItemSelectFocus = (index: number) => {
+    const newOpenStates = [...openItemPopovers];
+    newOpenStates[index] = true;
+    setOpenItemPopovers(newOpenStates);
+  };
+
   return (
     <div>
       {/* Dialog Trigger */}
@@ -388,12 +484,7 @@ export function SalesForm({
               <Form {...form}>
                 <form
                   onSubmit={form.handleSubmit(onSubmit)}
-                  className="space-y-8"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                    }
-                  }}>
+                  className="space-y-8">
                   {/* Basic Information Section */}
                   <div className="rounded-md border border-muted p-4 space-y-4">
                     <h4 className="text-sm font-semibold text-muted-foreground mb-2">
@@ -409,7 +500,9 @@ export function SalesForm({
                             <FormLabel className="font-medium">
                               Customer
                             </FormLabel>
-                            <Popover>
+                            <Popover
+                              open={openCustomerPopover}
+                              onOpenChange={setOpenCustomerPopover}>
                               <PopoverTrigger asChild>
                                 <FormControl>
                                   <Button
@@ -418,7 +511,14 @@ export function SalesForm({
                                     className={cn(
                                       "w-full justify-between bg-background",
                                       !field.value && "text-muted-foreground"
-                                    )}>
+                                    )}
+                                    ref={(el) => {
+                                      inputRefs.current[0] = el;
+                                    }}
+                                    onFocus={() =>
+                                      handleSelectFocus(setOpenCustomerPopover)
+                                    }
+                                    onKeyDown={(e) => handleKeyDown(e, 0)}>
                                     {field.value
                                       ? customers.find(
                                           (customer) =>
@@ -431,7 +531,10 @@ export function SalesForm({
                               </PopoverTrigger>
                               <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
                                 <Command>
-                                  <CommandInput placeholder="Search customer by name..." />
+                                  <CommandInput
+                                    placeholder="Search customer by name..."
+                                    autoFocus
+                                  />
                                   <CommandEmpty>
                                     No customer found.
                                   </CommandEmpty>
@@ -442,7 +545,12 @@ export function SalesForm({
                                           key={customer._id}
                                           value={customer.customerName}
                                           onSelect={() => {
-                                            field.onChange(customer._id);
+                                            handleSelectAndAdvance(
+                                              customer._id,
+                                              field.onChange,
+                                              setOpenCustomerPopover,
+                                              0
+                                            );
                                           }}>
                                           <Check
                                             className={cn(
@@ -487,6 +595,10 @@ export function SalesForm({
                                 {...field}
                                 className="bg-background"
                                 autoComplete="off"
+                                ref={(el) => {
+                                  inputRefs.current[1] = el;
+                                }}
+                                onKeyDown={(e) => handleKeyDown(e, 1)}
                               />
                             </FormControl>
                             <FormMessage />
@@ -503,7 +615,9 @@ export function SalesForm({
                             <FormLabel className="font-medium">
                               Order Date
                             </FormLabel>
-                            <Popover>
+                            <Popover
+                              open={openDatePopover}
+                              onOpenChange={setOpenDatePopover}>
                               <PopoverTrigger asChild>
                                 <FormControl>
                                   <Button
@@ -511,7 +625,14 @@ export function SalesForm({
                                     className={cn(
                                       "pl-3 text-left font-normal bg-background",
                                       !field.value && "text-muted-foreground"
-                                    )}>
+                                    )}
+                                    ref={(el) => {
+                                      inputRefs.current[2] = el;
+                                    }}
+                                    onFocus={() =>
+                                      handleSelectFocus(setOpenDatePopover)
+                                    }
+                                    onKeyDown={(e) => handleKeyDown(e, 2)}>
                                     {field.value ? (
                                       format(field.value, "PPP")
                                     ) : (
@@ -525,7 +646,18 @@ export function SalesForm({
                                 <Calendar
                                   mode="single"
                                   selected={field.value}
-                                  onSelect={field.onChange}
+                                  onSelect={(date) => {
+                                    field.onChange(date);
+                                    setOpenDatePopover(false);
+                                    setTimeout(() => {
+                                      const nextIndex = 3;
+                                      if (
+                                        nextIndex < inputRefs.current.length
+                                      ) {
+                                        inputRefs.current[nextIndex]?.focus();
+                                      }
+                                    }, 50);
+                                  }}
                                   initialFocus
                                 />
                               </PopoverContent>
@@ -550,6 +682,10 @@ export function SalesForm({
                                 {...field}
                                 className="bg-background"
                                 autoComplete="off"
+                                ref={(el) => {
+                                  inputRefs.current[3] = el;
+                                }}
+                                onKeyDown={(e) => handleKeyDown(e, 3)}
                               />
                             </FormControl>
                             <FormMessage />
@@ -572,6 +708,10 @@ export function SalesForm({
                                 {...field}
                                 className="bg-background"
                                 autoComplete="off"
+                                ref={(el) => {
+                                  inputRefs.current[4] = el;
+                                }}
+                                onKeyDown={(e) => handleKeyDown(e, 4)}
                               />
                             </FormControl>
                             <FormMessage />
@@ -594,6 +734,10 @@ export function SalesForm({
                                 {...field}
                                 className="bg-background"
                                 autoComplete="off"
+                                ref={(el) => {
+                                  inputRefs.current[5] = el;
+                                }}
+                                onKeyDown={(e) => handleKeyDown(e, 5)}
                               />
                             </FormControl>
                             <FormMessage />
@@ -642,7 +786,15 @@ export function SalesForm({
                               render={({ field }) => (
                                 <FormItem className="flex flex-col">
                                   <FormControl>
-                                    <Popover>
+                                    <Popover
+                                      open={openItemPopovers[index]}
+                                      onOpenChange={(open) => {
+                                        const newOpenStates = [
+                                          ...openItemPopovers,
+                                        ];
+                                        newOpenStates[index] = open;
+                                        setOpenItemPopovers(newOpenStates);
+                                      }}>
                                       <PopoverTrigger asChild>
                                         <FormControl>
                                           <Button
@@ -652,7 +804,17 @@ export function SalesForm({
                                               "w-full justify-between",
                                               !field.value &&
                                                 "text-muted-foreground"
-                                            )}>
+                                            )}
+                                            ref={(el) => {
+                                              inputRefs.current[6 + index * 4] =
+                                                el;
+                                            }}
+                                            onFocus={() =>
+                                              handleItemSelectFocus(index)
+                                            }
+                                            onKeyDown={(e) =>
+                                              handleKeyDown(e, 6 + index * 4)
+                                            }>
                                             {field.value
                                               ? items.find(
                                                   (item) =>
@@ -665,7 +827,10 @@ export function SalesForm({
                                       </PopoverTrigger>
                                       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
                                         <Command>
-                                          <CommandInput placeholder="Search item by name..." />
+                                          <CommandInput
+                                            placeholder="Search item by name..."
+                                            autoFocus
+                                          />
                                           <CommandEmpty>
                                             No item found.
                                           </CommandEmpty>
@@ -676,8 +841,7 @@ export function SalesForm({
                                                   key={item._id}
                                                   value={item.name}
                                                   onSelect={() => {
-                                                    field.onChange(item._id);
-                                                    handleItemSelection(
+                                                    handleItemSelectAndAdvance(
                                                       item._id,
                                                       index
                                                     );
@@ -722,6 +886,12 @@ export function SalesForm({
                                       type="text"
                                       className="text-center"
                                       {...field}
+                                      ref={(el) => {
+                                        inputRefs.current[7 + index * 4] = el;
+                                      }}
+                                      onKeyDown={(e) =>
+                                        handleKeyDown(e, 7 + index * 4)
+                                      }
                                       onChange={(e) => {
                                         const value =
                                           e.target.value === ""
@@ -751,6 +921,12 @@ export function SalesForm({
                                       className="text-center"
                                       autoComplete="off"
                                       {...field}
+                                      ref={(el) => {
+                                        inputRefs.current[8 + index * 4] = el;
+                                      }}
+                                      onKeyDown={(e) =>
+                                        handleKeyDown(e, 8 + index * 4)
+                                      }
                                       onChange={(e) => {
                                         const value =
                                           e.target.value === ""
@@ -780,6 +956,12 @@ export function SalesForm({
                                       className="text-center"
                                       autoComplete="off"
                                       {...field}
+                                      ref={(el) => {
+                                        inputRefs.current[9 + index * 4] = el;
+                                      }}
+                                      onKeyDown={(e) =>
+                                        handleKeyDown(e, 9 + index * 4)
+                                      }
                                       value={
                                         field.value === undefined
                                           ? ""
@@ -878,6 +1060,19 @@ export function SalesForm({
                                 placeholder="Notes for the customer"
                                 className="min-h-[100px] bg-background resize-none"
                                 {...field}
+                                ref={(el) => {
+                                  const lastItemIndex =
+                                    form.watch("items").length - 1;
+                                  inputRefs.current[10 + lastItemIndex * 4] =
+                                    el;
+                                }}
+                                onKeyDown={(e) => {
+                                  const lastItemIndex =
+                                    form.watch("items").length - 1;
+                                  if (e.key === "Enter" && !e.shiftKey) {
+                                    handleKeyDown(e, 10 + lastItemIndex * 4);
+                                  }
+                                }}
                               />
                             </FormControl>
                             <FormMessage />
@@ -913,6 +1108,19 @@ export function SalesForm({
                                 placeholder="Terms and conditions"
                                 className="min-h-[100px] bg-background resize-none"
                                 {...field}
+                                ref={(el) => {
+                                  const lastItemIndex =
+                                    form.watch("items").length - 1;
+                                  inputRefs.current[11 + lastItemIndex * 4] =
+                                    el;
+                                }}
+                                onKeyDown={(e) => {
+                                  const lastItemIndex =
+                                    form.watch("items").length - 1;
+                                  if (e.key === "Enter" && !e.shiftKey) {
+                                    handleKeyDown(e, 11 + lastItemIndex * 4);
+                                  }
+                                }}
                               />
                             </FormControl>
                             <FormMessage />
@@ -936,10 +1144,35 @@ export function SalesForm({
                               Status
                             </FormLabel>
                             <Select
-                              onValueChange={field.onChange}
-                              defaultValue={field.value}>
+                              onValueChange={(value) => {
+                                field.onChange(value);
+                                setOpenSelectStatus(false);
+                                setTimeout(() => {
+                                  const lastItemIndex =
+                                    form.watch("items").length - 1;
+                                  const nextIndex = 13 + lastItemIndex * 4;
+                                  if (nextIndex < inputRefs.current.length) {
+                                    inputRefs.current[nextIndex]?.focus();
+                                  }
+                                }, 50);
+                              }}
+                              defaultValue={field.value}
+                              open={openSelectStatus}
+                              onOpenChange={setOpenSelectStatus}>
                               <FormControl>
-                                <SelectTrigger className="bg-background">
+                                <SelectTrigger
+                                  className="bg-background"
+                                  ref={(el) => {
+                                    const lastItemIndex =
+                                      form.watch("items").length - 1;
+                                    inputRefs.current[12 + lastItemIndex * 4] =
+                                      el;
+                                  }}
+                                  onKeyDown={(e) => {
+                                    const lastItemIndex =
+                                      form.watch("items").length - 1;
+                                    handleKeyDown(e, 12 + lastItemIndex * 4);
+                                  }}>
                                   <SelectValue placeholder="Select status" />
                                 </SelectTrigger>
                               </FormControl>
@@ -983,10 +1216,41 @@ export function SalesForm({
                                   Discount Type
                                 </FormLabel>
                                 <Select
-                                  onValueChange={field.onChange}
-                                  defaultValue={field.value}>
+                                  onValueChange={(value) => {
+                                    field.onChange(value);
+                                    setOpenDiscountType(false);
+                                    setTimeout(() => {
+                                      const lastItemIndex =
+                                        form.watch("items").length - 1;
+                                      const nextIndex = 14 + lastItemIndex * 4;
+                                      if (
+                                        nextIndex < inputRefs.current.length
+                                      ) {
+                                        inputRefs.current[nextIndex]?.focus();
+                                      }
+                                    }, 50);
+                                  }}
+                                  defaultValue={field.value}
+                                  open={openDiscountType}
+                                  onOpenChange={setOpenDiscountType}>
                                   <FormControl>
-                                    <SelectTrigger className="h-8 text-xs bg-background">
+                                    <SelectTrigger
+                                      className="h-8 text-xs bg-background"
+                                      ref={(el) => {
+                                        const lastItemIndex =
+                                          form.watch("items").length - 1;
+                                        inputRefs.current[
+                                          13 + lastItemIndex * 4
+                                        ] = el;
+                                      }}
+                                      onKeyDown={(e) => {
+                                        const lastItemIndex =
+                                          form.watch("items").length - 1;
+                                        handleKeyDown(
+                                          e,
+                                          13 + lastItemIndex * 4
+                                        );
+                                      }}>
                                       <SelectValue placeholder="Type" />
                                     </SelectTrigger>
                                   </FormControl>
@@ -1017,21 +1281,30 @@ export function SalesForm({
                                     type="text"
                                     className="h-8 text-xs bg-background"
                                     autoComplete="off"
-                                    {...(() => {
-                                      const { value, onChange, ...restField } =
-                                        field;
-                                      return {
-                                        ...restField,
-                                        value: value === undefined ? "" : value,
-                                        onChange: (e) => {
-                                          const newValue =
-                                            e.target.value === ""
-                                              ? undefined
-                                              : Number(e.target.value);
-                                          onChange(newValue);
-                                        },
-                                      };
-                                    })()}
+                                    value={
+                                      field.value === undefined
+                                        ? ""
+                                        : field.value
+                                    }
+                                    onChange={(e) => {
+                                      const newValue =
+                                        e.target.value === ""
+                                          ? undefined
+                                          : Number(e.target.value);
+                                      field.onChange(newValue);
+                                    }}
+                                    ref={(el) => {
+                                      const lastItemIndex =
+                                        form.watch("items").length - 1;
+                                      inputRefs.current[
+                                        14 + lastItemIndex * 4
+                                      ] = el;
+                                    }}
+                                    onKeyDown={(e) => {
+                                      const lastItemIndex =
+                                        form.watch("items").length - 1;
+                                      handleKeyDown(e, 14 + lastItemIndex * 4);
+                                    }}
                                   />
                                 </FormControl>
                                 <FormMessage />
@@ -1064,21 +1337,30 @@ export function SalesForm({
                                     type="text"
                                     className="h-8 text-xs bg-background"
                                     autoComplete="off"
-                                    {...(() => {
-                                      const { value, onChange, ...restField } =
-                                        field;
-                                      return {
-                                        ...restField,
-                                        value: value === undefined ? "" : value,
-                                        onChange: (e) => {
-                                          const newValue =
-                                            e.target.value === ""
-                                              ? undefined
-                                              : Number(e.target.value);
-                                          onChange(newValue);
-                                        },
-                                      };
-                                    })()}
+                                    value={
+                                      field.value === undefined
+                                        ? ""
+                                        : field.value
+                                    }
+                                    onChange={(e) => {
+                                      const newValue =
+                                        e.target.value === ""
+                                          ? undefined
+                                          : Number(e.target.value);
+                                      field.onChange(newValue);
+                                    }}
+                                    ref={(el) => {
+                                      const lastItemIndex =
+                                        form.watch("items").length - 1;
+                                      inputRefs.current[
+                                        15 + lastItemIndex * 4
+                                      ] = el;
+                                    }}
+                                    onKeyDown={(e) => {
+                                      const lastItemIndex =
+                                        form.watch("items").length - 1;
+                                      handleKeyDown(e, 15 + lastItemIndex * 4);
+                                    }}
                                   />
                                 </FormControl>
                                 <FormMessage />
@@ -1099,21 +1381,30 @@ export function SalesForm({
                                     type="text"
                                     className="h-8 text-xs bg-background"
                                     autoComplete="off"
-                                    {...(() => {
-                                      const { value, onChange, ...restField } =
-                                        field;
-                                      return {
-                                        ...restField,
-                                        value: value === undefined ? "" : value,
-                                        onChange: (e) => {
-                                          const newValue =
-                                            e.target.value === ""
-                                              ? undefined
-                                              : Number(e.target.value);
-                                          onChange(newValue);
-                                        },
-                                      };
-                                    })()}
+                                    value={
+                                      field.value === undefined
+                                        ? ""
+                                        : field.value
+                                    }
+                                    onChange={(e) => {
+                                      const newValue =
+                                        e.target.value === ""
+                                          ? undefined
+                                          : Number(e.target.value);
+                                      field.onChange(newValue);
+                                    }}
+                                    ref={(el) => {
+                                      const lastItemIndex =
+                                        form.watch("items").length - 1;
+                                      inputRefs.current[
+                                        16 + lastItemIndex * 4
+                                      ] = el;
+                                    }}
+                                    onKeyDown={(e) => {
+                                      const lastItemIndex =
+                                        form.watch("items").length - 1;
+                                      handleKeyDown(e, 16 + lastItemIndex * 4);
+                                    }}
                                   />
                                 </FormControl>
                                 <FormMessage />
@@ -1150,21 +1441,30 @@ export function SalesForm({
                                     type="text"
                                     className="bg-background"
                                     autoComplete="off"
-                                    {...(() => {
-                                      const { value, onChange, ...restField } =
-                                        field;
-                                      return {
-                                        ...restField,
-                                        value: value === undefined ? "" : value,
-                                        onChange: (e) => {
-                                          const newValue =
-                                            e.target.value === ""
-                                              ? undefined
-                                              : Number(e.target.value);
-                                          onChange(newValue);
-                                        },
-                                      };
-                                    })()}
+                                    value={
+                                      field.value === undefined
+                                        ? ""
+                                        : field.value
+                                    }
+                                    onChange={(e) => {
+                                      const newValue =
+                                        e.target.value === ""
+                                          ? undefined
+                                          : Number(e.target.value);
+                                      field.onChange(newValue);
+                                    }}
+                                    ref={(el) => {
+                                      const lastItemIndex =
+                                        form.watch("items").length - 1;
+                                      inputRefs.current[
+                                        17 + lastItemIndex * 4
+                                      ] = el;
+                                    }}
+                                    onKeyDown={(e) => {
+                                      const lastItemIndex =
+                                        form.watch("items").length - 1;
+                                      handleKeyDown(e, 17 + lastItemIndex * 4);
+                                    }}
                                   />
                                 </FormControl>
                                 <FormMessage />
@@ -1256,7 +1556,14 @@ export function SalesForm({
                       onClick={() => setIsOpen(false)}>
                       Cancel
                     </Button>
-                    <Button type="submit" disabled={isLoading} className="px-8">
+                    <Button
+                      type="submit"
+                      disabled={isLoading}
+                      className="px-8"
+                      ref={(el) => {
+                        const lastItemIndex = form.watch("items").length - 1;
+                        inputRefs.current[18 + lastItemIndex * 4] = el;
+                      }}>
                       {isLoading ? (
                         <>
                           <span className="animate-spin mr-2">⟳</span>
