@@ -13,7 +13,7 @@ import {
 } from "../ui/form";
 import apiClient from "@/lib/api-client";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Edit, X } from "lucide-react";
 
 const itemSchema = z.object({
@@ -36,6 +36,8 @@ export function ItemForm({
 }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
   const form = useForm<ItemFormValues>({
     resolver: zodResolver(itemSchema),
     defaultValues: initialData || {
@@ -45,6 +47,32 @@ export function ItemForm({
       price: undefined,
     },
   });
+
+  // Reset inputRefs when form opens
+  useEffect(() => {
+    if (isOpen) {
+      inputRefs.current = inputRefs.current.slice(0, 0);
+    }
+  }, [isOpen]);
+
+  const handleKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    index: number
+  ) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+
+      // Find the next input field
+      const nextIndex = index + 1;
+      if (nextIndex < inputRefs.current.length) {
+        // Focus the next input field
+        inputRefs.current[nextIndex]?.focus();
+      } else {
+        // If last field, submit the form
+        form.handleSubmit(onSubmit)();
+      }
+    }
+  };
 
   const onSubmit = async (data: ItemFormValues) => {
     try {
@@ -99,11 +127,6 @@ export function ItemForm({
             <div className="space-y-6 py-2">
               <Form {...form}>
                 <form
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                    }
-                  }}
                   onSubmit={form.handleSubmit(onSubmit)}
                   className="space-y-6">
                   <div className="grid gap-6 md:grid-cols-2">
@@ -114,7 +137,13 @@ export function ItemForm({
                         <FormItem>
                           <FormLabel>Name</FormLabel>
                           <FormControl>
-                            <Input {...field} />
+                            <Input
+                              {...field}
+                              onKeyDown={(e) => handleKeyDown(e, 0)}
+                              ref={(el) => {
+                                inputRefs.current[0] = el;
+                              }}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -135,6 +164,10 @@ export function ItemForm({
                                 field.onChange(Number(e.target.value))
                               }
                               value={field.value}
+                              onKeyDown={(e) => handleKeyDown(e, 1)}
+                              ref={(el) => {
+                                inputRefs.current[1] = el;
+                              }}
                             />
                           </FormControl>
                           <FormMessage />
@@ -149,7 +182,14 @@ export function ItemForm({
                         <FormItem>
                           <FormLabel>Warranty</FormLabel>
                           <FormControl>
-                            <Input {...field} value={field.value ?? ""} />
+                            <Input
+                              {...field}
+                              value={field.value ?? ""}
+                              onKeyDown={(e) => handleKeyDown(e, 2)}
+                              ref={(el) => {
+                                inputRefs.current[2] = el;
+                              }}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -171,6 +211,10 @@ export function ItemForm({
                                 field.onChange(Number(e.target.value))
                               }
                               value={field.value}
+                              onKeyDown={(e) => handleKeyDown(e, 3)}
+                              ref={(el) => {
+                                inputRefs.current[3] = el;
+                              }}
                             />
                           </FormControl>
                           <FormMessage />
