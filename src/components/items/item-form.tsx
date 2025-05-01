@@ -51,7 +51,7 @@ export function ItemForm({
   // Reset inputRefs when form opens
   useEffect(() => {
     if (isOpen) {
-      inputRefs.current = inputRefs.current.slice(0, 0);
+      inputRefs.current = [];
     }
   }, [isOpen]);
 
@@ -61,12 +61,16 @@ export function ItemForm({
   ) => {
     if (e.key === "Enter") {
       e.preventDefault();
+      e.stopPropagation();
 
       // Find the next input field
       const nextIndex = index + 1;
       if (nextIndex < inputRefs.current.length) {
         // Focus the next input field
-        inputRefs.current[nextIndex]?.focus();
+        const nextInput = inputRefs.current[nextIndex];
+        if (nextInput) {
+          nextInput.focus();
+        }
       } else {
         // If last field, submit the form
         form.handleSubmit(onSubmit)();
@@ -139,9 +143,12 @@ export function ItemForm({
                           <FormControl>
                             <Input
                               {...field}
+                              autoComplete="off"
                               onKeyDown={(e) => handleKeyDown(e, 0)}
                               ref={(el) => {
-                                inputRefs.current[0] = el;
+                                if (el) {
+                                  inputRefs.current[0] = el;
+                                }
                               }}
                             />
                           </FormControl>
@@ -159,6 +166,7 @@ export function ItemForm({
                           <FormControl>
                             <Input
                               type="number"
+                              autoComplete="off"
                               {...field}
                               onChange={(e) =>
                                 field.onChange(Number(e.target.value))
@@ -166,7 +174,9 @@ export function ItemForm({
                               value={field.value}
                               onKeyDown={(e) => handleKeyDown(e, 1)}
                               ref={(el) => {
-                                inputRefs.current[1] = el;
+                                if (el) {
+                                  inputRefs.current[1] = el;
+                                }
                               }}
                             />
                           </FormControl>
@@ -184,10 +194,13 @@ export function ItemForm({
                           <FormControl>
                             <Input
                               {...field}
+                              autoComplete="off"
                               value={field.value ?? ""}
                               onKeyDown={(e) => handleKeyDown(e, 2)}
                               ref={(el) => {
-                                inputRefs.current[2] = el;
+                                if (el) {
+                                  inputRefs.current[2] = el;
+                                }
                               }}
                             />
                           </FormControl>
@@ -206,6 +219,7 @@ export function ItemForm({
                             <Input
                               type="number"
                               step="0.01"
+                              autoComplete="off"
                               {...field}
                               onChange={(e) =>
                                 field.onChange(Number(e.target.value))
@@ -213,7 +227,9 @@ export function ItemForm({
                               value={field.value}
                               onKeyDown={(e) => handleKeyDown(e, 3)}
                               ref={(el) => {
-                                inputRefs.current[3] = el;
+                                if (el) {
+                                  inputRefs.current[3] = el;
+                                }
                               }}
                             />
                           </FormControl>

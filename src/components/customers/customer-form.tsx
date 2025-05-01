@@ -44,14 +44,18 @@ export function CustomerForm({
 }: CustomerFormProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const inputRefs = useRef<
-    (HTMLInputElement | HTMLTextAreaElement | HTMLButtonElement | null)[]
-  >([]);
+  const inputRefs = useRef<{
+    [key: string]:
+      | HTMLInputElement
+      | HTMLTextAreaElement
+      | HTMLButtonElement
+      | null;
+  }>({});
 
   // Reset inputRefs when form opens
   useEffect(() => {
     if (isOpen) {
-      inputRefs.current = inputRefs.current.slice(0, 0);
+      inputRefs.current = {};
     }
   }, [isOpen]);
 
@@ -68,16 +72,27 @@ export function CustomerForm({
 
   const handleKeyDown = (
     e: React.KeyboardEvent<HTMLElement>,
-    index: number
+    currentField: string
   ) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
 
-      // Find the next input field
-      const nextIndex = index + 1;
-      if (nextIndex < inputRefs.current.length) {
-        // Focus the next input field
-        inputRefs.current[nextIndex]?.focus();
+      const fieldOrder = [
+        "customerType",
+        "customerName",
+        "contactNumber",
+        "email",
+        "address",
+        "submit",
+      ];
+      const currentIndex = fieldOrder.indexOf(currentField);
+
+      if (currentIndex < fieldOrder.length - 1) {
+        const nextField = fieldOrder[currentIndex + 1];
+        const nextInput = inputRefs.current[nextField];
+        if (nextInput) {
+          nextInput.focus();
+        }
       } else {
         // If last field, submit the form
         form.handleSubmit(onSubmit)();
@@ -137,7 +152,10 @@ export function CustomerForm({
             </button>
 
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)}>
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                autoComplete="off"
+                noValidate>
                 <Card className="border-0 shadow-none">
                   <CardHeader className="pb-3">
                     <CardTitle>
@@ -160,8 +178,11 @@ export function CustomerForm({
                                 <FormControl>
                                   <SelectTrigger
                                     ref={(el) => {
-                                      inputRefs.current[0] = el;
-                                    }}>
+                                      inputRefs.current["customerType"] = el;
+                                    }}
+                                    onKeyDown={(e) =>
+                                      handleKeyDown(e, "customerType")
+                                    }>
                                     <SelectValue placeholder="Select type" />
                                   </SelectTrigger>
                                 </FormControl>
@@ -189,9 +210,12 @@ export function CustomerForm({
                                 <Input
                                   {...field}
                                   autoComplete="off"
-                                  onKeyDown={(e) => handleKeyDown(e, 1)}
+                                  name="random-name-1"
+                                  onKeyDown={(e) =>
+                                    handleKeyDown(e, "customerName")
+                                  }
                                   ref={(el) => {
-                                    inputRefs.current[1] = el;
+                                    inputRefs.current["customerName"] = el;
                                   }}
                                 />
                               </FormControl>
@@ -210,9 +234,12 @@ export function CustomerForm({
                                 <Input
                                   {...field}
                                   autoComplete="off"
-                                  onKeyDown={(e) => handleKeyDown(e, 2)}
+                                  name="random-name-2"
+                                  onKeyDown={(e) =>
+                                    handleKeyDown(e, "contactNumber")
+                                  }
                                   ref={(el) => {
-                                    inputRefs.current[2] = el;
+                                    inputRefs.current["contactNumber"] = el;
                                   }}
                                 />
                               </FormControl>
@@ -232,9 +259,10 @@ export function CustomerForm({
                                   type="email"
                                   {...field}
                                   autoComplete="off"
-                                  onKeyDown={(e) => handleKeyDown(e, 3)}
+                                  name="random-name-3"
+                                  onKeyDown={(e) => handleKeyDown(e, "email")}
                                   ref={(el) => {
-                                    inputRefs.current[3] = el;
+                                    inputRefs.current["email"] = el;
                                   }}
                                 />
                               </FormControl>
@@ -256,9 +284,10 @@ export function CustomerForm({
                                 className="min-h-[100px]"
                                 {...field}
                                 autoComplete="off"
-                                onKeyDown={(e) => handleKeyDown(e, 4)}
+                                name="random-name-4"
+                                onKeyDown={(e) => handleKeyDown(e, "address")}
                                 ref={(el) => {
-                                  inputRefs.current[4] = el;
+                                  inputRefs.current["address"] = el;
                                 }}
                               />
                             </FormControl>
@@ -280,7 +309,7 @@ export function CustomerForm({
                       type="submit"
                       disabled={isLoading}
                       ref={(el) => {
-                        inputRefs.current[5] = el;
+                        inputRefs.current["submit"] = el;
                       }}>
                       {isLoading
                         ? "Saving..."
