@@ -9,6 +9,7 @@ import { SalesPage } from "./pages/sales/sales-page";
 import { OrderDetails } from "./pages/sales/order-details";
 import { DashboardPage } from "./pages/dashboard/dashboard-page";
 import { SettingsPage } from "./pages/settings/settings-page";
+import HomePage from "./pages/home";
 import { InitUploadThing } from "./components/ui/init-uploadthing";
 import { PermissionGuard } from "./components/layout/permission-guard";
 
@@ -17,8 +18,9 @@ function App() {
     <>
       <InitUploadThing />
       <Routes>
-        <Route path="/" element={<LoginForm />} />
+        <Route path="/login" element={<LoginForm />} />
         <Route path="/register" element={<RegisterForm />} />
+        <Route path="/" element={<HomePage />} />
         <Route
           path="/dashboard"
           element={
