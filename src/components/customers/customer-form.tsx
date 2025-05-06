@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -37,6 +37,16 @@ interface CustomerFormProps {
   onSuccess?: () => void;
 }
 
+// Field identifiers for focus management
+const FIELD_IDS = {
+  CUSTOMER_TYPE: "customer-type-field",
+  CUSTOMER_NAME: "customer-name-field",
+  CONTACT_NUMBER: "customer-contact-field",
+  EMAIL: "customer-email-field",
+  ADDRESS: "customer-address-field",
+  SUBMIT: "customer-submit-button",
+};
+
 export function CustomerForm({
   initialData,
   id,
@@ -44,20 +54,6 @@ export function CustomerForm({
 }: CustomerFormProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const inputRefs = useRef<{
-    [key: string]:
-      | HTMLInputElement
-      | HTMLTextAreaElement
-      | HTMLButtonElement
-      | null;
-  }>({});
-
-  // Reset inputRefs when form opens
-  useEffect(() => {
-    if (isOpen) {
-      inputRefs.current = {};
-    }
-  }, [isOpen]);
 
   const form = useForm<CustomerFormValues>({
     resolver: zodResolver(customerSchema),
@@ -70,6 +66,14 @@ export function CustomerForm({
     },
   });
 
+  // Focus a field by ID
+  const focusField = (id: string) => {
+    const element = document.getElementById(id) as HTMLElement;
+    if (element) {
+      element.focus();
+    }
+  };
+
   const handleKeyDown = (
     e: React.KeyboardEvent<HTMLElement>,
     currentField: string
@@ -78,21 +82,18 @@ export function CustomerForm({
       e.preventDefault();
 
       const fieldOrder = [
-        "customerType",
-        "customerName",
-        "contactNumber",
-        "email",
-        "address",
-        "submit",
+        FIELD_IDS.CUSTOMER_TYPE,
+        FIELD_IDS.CUSTOMER_NAME,
+        FIELD_IDS.CONTACT_NUMBER,
+        FIELD_IDS.EMAIL,
+        FIELD_IDS.ADDRESS,
+        FIELD_IDS.SUBMIT,
       ];
       const currentIndex = fieldOrder.indexOf(currentField);
 
       if (currentIndex < fieldOrder.length - 1) {
         const nextField = fieldOrder[currentIndex + 1];
-        const nextInput = inputRefs.current[nextField];
-        if (nextInput) {
-          nextInput.focus();
-        }
+        focusField(nextField);
       } else {
         // If last field, submit the form
         form.handleSubmit(onSubmit)();
@@ -177,11 +178,9 @@ export function CustomerForm({
                                 defaultValue={field.value}>
                                 <FormControl>
                                   <SelectTrigger
-                                    ref={(el) => {
-                                      inputRefs.current["customerType"] = el;
-                                    }}
+                                    id={FIELD_IDS.CUSTOMER_TYPE}
                                     onKeyDown={(e) =>
-                                      handleKeyDown(e, "customerType")
+                                      handleKeyDown(e, FIELD_IDS.CUSTOMER_TYPE)
                                     }>
                                     <SelectValue placeholder="Select type" />
                                   </SelectTrigger>
@@ -209,14 +208,12 @@ export function CustomerForm({
                               <FormControl>
                                 <Input
                                   {...field}
+                                  id={FIELD_IDS.CUSTOMER_NAME}
                                   autoComplete="off"
                                   name="random-name-1"
                                   onKeyDown={(e) =>
-                                    handleKeyDown(e, "customerName")
+                                    handleKeyDown(e, FIELD_IDS.CUSTOMER_NAME)
                                   }
-                                  ref={(el) => {
-                                    inputRefs.current["customerName"] = el;
-                                  }}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -233,14 +230,12 @@ export function CustomerForm({
                               <FormControl>
                                 <Input
                                   {...field}
+                                  id={FIELD_IDS.CONTACT_NUMBER}
                                   autoComplete="off"
                                   name="random-name-2"
                                   onKeyDown={(e) =>
-                                    handleKeyDown(e, "contactNumber")
+                                    handleKeyDown(e, FIELD_IDS.CONTACT_NUMBER)
                                   }
-                                  ref={(el) => {
-                                    inputRefs.current["contactNumber"] = el;
-                                  }}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -258,12 +253,10 @@ export function CustomerForm({
                                 <Input
                                   type="email"
                                   {...field}
+                                  id={FIELD_IDS.EMAIL}
                                   autoComplete="off"
                                   name="random-name-3"
-                                  onKeyDown={(e) => handleKeyDown(e, "email")}
-                                  ref={(el) => {
-                                    inputRefs.current["email"] = el;
-                                  }}
+                                  onKeyDown={(e) => handleKeyDown(e, FIELD_IDS.EMAIL)}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -283,12 +276,10 @@ export function CustomerForm({
                                 placeholder="Enter complete address"
                                 className="min-h-[100px]"
                                 {...field}
+                                id={FIELD_IDS.ADDRESS}
                                 autoComplete="off"
                                 name="random-name-4"
-                                onKeyDown={(e) => handleKeyDown(e, "address")}
-                                ref={(el) => {
-                                  inputRefs.current["address"] = el;
-                                }}
+                                onKeyDown={(e) => handleKeyDown(e, FIELD_IDS.ADDRESS)}
                               />
                             </FormControl>
                             <FormMessage />
@@ -307,10 +298,8 @@ export function CustomerForm({
                     </Button>
                     <Button
                       type="submit"
-                      disabled={isLoading}
-                      ref={(el) => {
-                        inputRefs.current["submit"] = el;
-                      }}>
+                      id={FIELD_IDS.SUBMIT}
+                      disabled={isLoading}>
                       {isLoading
                         ? "Saving..."
                         : id
