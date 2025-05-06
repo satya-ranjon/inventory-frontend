@@ -13,7 +13,7 @@ import {
 } from "../ui/form";
 import apiClient from "@/lib/api-client";
 import { toast } from "sonner";
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { Edit, X } from "lucide-react";
 
 const itemSchema = z.object({
@@ -24,6 +24,14 @@ const itemSchema = z.object({
 });
 
 type ItemFormValues = z.infer<typeof itemSchema>;
+
+// Field identifiers for focus management
+const FIELD_IDS = {
+  NAME: "item-name-field",
+  QUANTITY: "item-quantity-field",
+  WARRANTY: "item-warranty-field",
+  PRICE: "item-price-field",
+};
 
 export function ItemForm({
   initialData,
@@ -36,7 +44,6 @@ export function ItemForm({
 }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const form = useForm<ItemFormValues>({
     resolver: zodResolver(itemSchema),
@@ -48,29 +55,34 @@ export function ItemForm({
     },
   });
 
-  // Reset inputRefs when form opens
-  useEffect(() => {
-    if (isOpen) {
-      inputRefs.current = [];
+  // Focus a field by ID
+  const focusField = (id: string) => {
+    const element = document.getElementById(id) as HTMLInputElement;
+    if (element) {
+      element.focus();
     }
-  }, [isOpen]);
+  };
 
   const handleKeyDown = (
     e: React.KeyboardEvent<HTMLInputElement>,
-    index: number
+    currentField: string
   ) => {
     if (e.key === "Enter") {
       e.preventDefault();
       e.stopPropagation();
 
-      // Find the next input field
-      const nextIndex = index + 1;
-      if (nextIndex < inputRefs.current.length) {
-        // Focus the next input field
-        const nextInput = inputRefs.current[nextIndex];
-        if (nextInput) {
-          nextInput.focus();
-        }
+      // Determine next field to focus
+      const fieldOrder = [
+        FIELD_IDS.NAME,
+        FIELD_IDS.QUANTITY,
+        FIELD_IDS.WARRANTY,
+        FIELD_IDS.PRICE,
+      ];
+      const currentIndex = fieldOrder.indexOf(currentField);
+      
+      if (currentIndex < fieldOrder.length - 1) {
+        // Focus next field
+        focusField(fieldOrder[currentIndex + 1]);
       } else {
         // If last field, submit the form
         form.handleSubmit(onSubmit)();
@@ -143,13 +155,9 @@ export function ItemForm({
                           <FormControl>
                             <Input
                               {...field}
+                              id={FIELD_IDS.NAME}
                               autoComplete="off"
-                              onKeyDown={(e) => handleKeyDown(e, 0)}
-                              ref={(el) => {
-                                if (el) {
-                                  inputRefs.current[0] = el;
-                                }
-                              }}
+                              onKeyDown={(e) => handleKeyDown(e, FIELD_IDS.NAME)}
                             />
                           </FormControl>
                           <FormMessage />
@@ -166,18 +174,14 @@ export function ItemForm({
                           <FormControl>
                             <Input
                               type="number"
+                              id={FIELD_IDS.QUANTITY}
                               autoComplete="off"
                               {...field}
                               onChange={(e) =>
                                 field.onChange(Number(e.target.value))
                               }
                               value={field.value}
-                              onKeyDown={(e) => handleKeyDown(e, 1)}
-                              ref={(el) => {
-                                if (el) {
-                                  inputRefs.current[1] = el;
-                                }
-                              }}
+                              onKeyDown={(e) => handleKeyDown(e, FIELD_IDS.QUANTITY)}
                             />
                           </FormControl>
                           <FormMessage />
@@ -194,14 +198,10 @@ export function ItemForm({
                           <FormControl>
                             <Input
                               {...field}
+                              id={FIELD_IDS.WARRANTY}
                               autoComplete="off"
                               value={field.value ?? ""}
-                              onKeyDown={(e) => handleKeyDown(e, 2)}
-                              ref={(el) => {
-                                if (el) {
-                                  inputRefs.current[2] = el;
-                                }
-                              }}
+                              onKeyDown={(e) => handleKeyDown(e, FIELD_IDS.WARRANTY)}
                             />
                           </FormControl>
                           <FormMessage />
@@ -219,18 +219,14 @@ export function ItemForm({
                             <Input
                               type="number"
                               step="0.01"
+                              id={FIELD_IDS.PRICE}
                               autoComplete="off"
                               {...field}
                               onChange={(e) =>
                                 field.onChange(Number(e.target.value))
                               }
                               value={field.value}
-                              onKeyDown={(e) => handleKeyDown(e, 3)}
-                              ref={(el) => {
-                                if (el) {
-                                  inputRefs.current[3] = el;
-                                }
-                              }}
+                              onKeyDown={(e) => handleKeyDown(e, FIELD_IDS.PRICE)}
                             />
                           </FormControl>
                           <FormMessage />
