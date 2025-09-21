@@ -8,6 +8,7 @@ import {
   ShoppingCart,
   LogOut,
   Menu,
+  Settings,
 } from "lucide-react";
 
 import { Button } from "../ui/button";
@@ -15,6 +16,7 @@ import { useAuth } from "../../hooks/use-auth";
 import { useAuthStore } from "../../stores/auth-store";
 import { AuthGuard } from "./auth-guard";
 import { Sheet, SheetContent } from "../ui/sheet";
+import { TPermission } from "@/types/auth";
 
 interface NavItemProps {
   href: string;
@@ -84,21 +86,32 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       href: "/dashboard",
       icon: <BarChart3 className="h-5 w-5" />,
       label: "Dashboard",
+      permission: "dashboard" as TPermission,
     },
     {
       href: "/dashboard/items",
       icon: <Package className="h-5 w-5" />,
       label: "Items",
+      permission: "item" as TPermission,
     },
     {
       href: "/dashboard/customers",
       icon: <Users className="h-5 w-5" />,
       label: "Customers",
+      permission: "customer" as TPermission,
     },
     {
       href: "/dashboard/sales",
       icon: <ShoppingCart className="h-5 w-5" />,
       label: "Sales Orders",
+      permission: "sales" as TPermission,
+    },
+    {
+      href: "/dashboard/settings",
+      icon: <Settings className="h-5 w-5" />,
+      label: "Settings",
+      // Everyone has access to their own settings
+      permission: undefined,
     },
   ];
 

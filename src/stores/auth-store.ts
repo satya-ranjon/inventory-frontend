@@ -1,22 +1,16 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-
-interface User {
-  _id: string;
-  email: string;
-  role: string;
-  name: string;
-}
+import { TUser } from "../types/auth";
 
 interface AuthState {
-  user: User | null;
+  user: TUser | null;
   accessToken: string | null;
   refreshToken: string | null;
   accessTokenExpiry: number | null;
   refreshTokenExpiry: number | null;
   isAuthenticated: boolean;
   lastActivity: number | null;
-  setUser: (user: User) => void;
+  setUser: (user: TUser) => void;
   setTokens: (
     accessToken: string,
     refreshToken: string,
@@ -24,7 +18,7 @@ interface AuthState {
     refreshExpiry: number
   ) => void;
   login: (userData: {
-    user: User;
+    user: TUser;
     accessToken: string;
     refreshToken: string;
     accessTokenExpiry: number;

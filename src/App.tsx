@@ -8,6 +8,8 @@ import { ItemsPage } from "./pages/items/items-page";
 import { SalesPage } from "./pages/sales/sales-page";
 import { OrderDetails } from "./pages/sales/order-details";
 import { DashboardPage } from "./pages/dashboard/dashboard-page";
+import { PermissionGuard } from "./components/layout/permission-guard";
+import { SettingsPage } from "./pages/settings/settings-page";
 
 function App() {
   return (
@@ -19,7 +21,9 @@ function App() {
           path="/dashboard"
           element={
             <DashboardLayout>
-              <DashboardPage />
+              <PermissionGuard requiredPermission="dashboard">
+                <DashboardPage />
+              </PermissionGuard>
             </DashboardLayout>
           }
         />
@@ -29,7 +33,9 @@ function App() {
           path="/dashboard/customers"
           element={
             <DashboardLayout>
-              <CustomersPage />
+              <PermissionGuard requiredPermission="customer">
+                <CustomersPage />
+              </PermissionGuard>
             </DashboardLayout>
           }
         />
@@ -37,7 +43,9 @@ function App() {
           path="/dashboard/customers/:id"
           element={
             <DashboardLayout>
-              <CustomerProfile />
+              <PermissionGuard requiredPermission="customer">
+                <CustomerProfile />
+              </PermissionGuard>
             </DashboardLayout>
           }
         />
@@ -47,7 +55,9 @@ function App() {
           path="/dashboard/items"
           element={
             <DashboardLayout>
-              <ItemsPage />
+              <PermissionGuard requiredPermission="item">
+                <ItemsPage />
+              </PermissionGuard>
             </DashboardLayout>
           }
         />
@@ -57,7 +67,9 @@ function App() {
           path="/dashboard/sales"
           element={
             <DashboardLayout>
-              <SalesPage />
+              <PermissionGuard requiredPermission="sales">
+                <SalesPage />
+              </PermissionGuard>
             </DashboardLayout>
           }
         />
@@ -65,7 +77,9 @@ function App() {
           path="/dashboard/sales/:id"
           element={
             <DashboardLayout>
-              <OrderDetails />
+              <PermissionGuard requiredPermission="sales">
+                <OrderDetails />
+              </PermissionGuard>
             </DashboardLayout>
           }
         />
@@ -75,7 +89,9 @@ function App() {
           path="/dashboard/orders"
           element={
             <DashboardLayout>
-              <SalesPage />
+              <PermissionGuard requiredPermission="sales">
+                <SalesPage />
+              </PermissionGuard>
             </DashboardLayout>
           }
         />
@@ -83,7 +99,9 @@ function App() {
           path="/dashboard/orders/:id"
           element={
             <DashboardLayout>
-              <OrderDetails />
+              <PermissionGuard requiredPermission="sales">
+                <OrderDetails />
+              </PermissionGuard>
             </DashboardLayout>
           }
         />
@@ -93,7 +111,19 @@ function App() {
           path="/dashboard/invoices"
           element={
             <DashboardLayout>
-              <SalesPage />
+              <PermissionGuard requiredPermission="sales">
+                <SalesPage />
+              </PermissionGuard>
+            </DashboardLayout>
+          }
+        />
+
+        {/* Settings route - all authenticated users can access */}
+        <Route
+          path="/dashboard/settings"
+          element={
+            <DashboardLayout>
+              <SettingsPage />
             </DashboardLayout>
           }
         />
