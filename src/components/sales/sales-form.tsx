@@ -354,8 +354,9 @@ export function SalesForm({
     const selectedItem = items.find((item) => item._id === itemId);
 
     if (selectedItem) {
-      // Update the rate with the item's price
+      // Update the form values
       const formItems = form.getValues("items");
+      formItems[index].item = itemId; // Set the selected item ID
       formItems[index].rate = selectedItem.price;
 
       // Update the amount calculation
@@ -464,7 +465,8 @@ export function SalesForm({
           <div className="relative w-full max-w-9/10 max-h-[90vh] overflow-y-auto rounded-lg bg-white p-6 shadow-lg">
             <button
               className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100"
-              onClick={() => setIsOpen(false)}>
+              onClick={() => setIsOpen(false)}
+            >
               <X className="h-4 w-4" />
               <span className="sr-only">Close</span>
             </button>
@@ -477,14 +479,16 @@ export function SalesForm({
                 {id && (
                   <Badge
                     variant="outline"
-                    className="text-sm font-medium">{`ID: ${id}`}</Badge>
+                    className="text-sm font-medium"
+                  >{`ID: ${id}`}</Badge>
                 )}
               </div>
 
               <Form {...form}>
                 <form
                   onSubmit={form.handleSubmit(onSubmit)}
-                  className="space-y-8">
+                  className="space-y-8"
+                >
                   {/* Basic Information Section */}
                   <div className="rounded-md border border-muted p-4 space-y-4">
                     <h4 className="text-sm font-semibold text-muted-foreground mb-2">
@@ -502,7 +506,8 @@ export function SalesForm({
                             </FormLabel>
                             <Popover
                               open={openCustomerPopover}
-                              onOpenChange={setOpenCustomerPopover}>
+                              onOpenChange={setOpenCustomerPopover}
+                            >
                               <PopoverTrigger asChild>
                                 <FormControl>
                                   <Button
@@ -518,7 +523,8 @@ export function SalesForm({
                                     onFocus={() =>
                                       handleSelectFocus(setOpenCustomerPopover)
                                     }
-                                    onKeyDown={(e) => handleKeyDown(e, 0)}>
+                                    onKeyDown={(e) => handleKeyDown(e, 0)}
+                                  >
                                     {field.value
                                       ? customers.find(
                                           (customer) =>
@@ -551,7 +557,8 @@ export function SalesForm({
                                               setOpenCustomerPopover,
                                               0
                                             );
-                                          }}>
+                                          }}
+                                        >
                                           <Check
                                             className={cn(
                                               "mr-2 h-4 w-4",
@@ -617,7 +624,8 @@ export function SalesForm({
                             </FormLabel>
                             <Popover
                               open={openDatePopover}
-                              onOpenChange={setOpenDatePopover}>
+                              onOpenChange={setOpenDatePopover}
+                            >
                               <PopoverTrigger asChild>
                                 <FormControl>
                                   <Button
@@ -632,7 +640,8 @@ export function SalesForm({
                                     onFocus={() =>
                                       handleSelectFocus(setOpenDatePopover)
                                     }
-                                    onKeyDown={(e) => handleKeyDown(e, 2)}>
+                                    onKeyDown={(e) => handleKeyDown(e, 2)}
+                                  >
                                     {field.value ? (
                                       format(field.value, "PPP")
                                     ) : (
@@ -758,7 +767,8 @@ export function SalesForm({
                         size="sm"
                         variant="outline"
                         onClick={addItemRow}
-                        className="gap-1 bg-primary/10 hover:bg-primary/20 border-primary/20 text-primary">
+                        className="gap-1 bg-primary/10 hover:bg-primary/20 border-primary/20 text-primary"
+                      >
                         <Plus className="h-4 w-4" /> Add Item
                       </Button>
                     </div>
@@ -777,7 +787,8 @@ export function SalesForm({
                       {form.watch("items").map((_, index) => (
                         <div
                           key={index}
-                          className="grid grid-cols-12 gap-2 items-end bg-background/50 p-2 rounded-md border border-muted/30 hover:border-muted/50 transition-colors">
+                          className="grid grid-cols-12 gap-2 items-end bg-background/50 p-2 rounded-md border border-muted/30 hover:border-muted/50 transition-colors"
+                        >
                           {/* Item Selection */}
                           <div className="col-span-4">
                             <FormField
@@ -785,89 +796,90 @@ export function SalesForm({
                               name={`items.${index}.item`}
                               render={({ field }) => (
                                 <FormItem className="flex flex-col">
-                                  <FormControl>
-                                    <Popover
-                                      open={openItemPopovers[index]}
-                                      onOpenChange={(open) => {
-                                        const newOpenStates = [
-                                          ...openItemPopovers,
-                                        ];
-                                        newOpenStates[index] = open;
-                                        setOpenItemPopovers(newOpenStates);
-                                      }}>
-                                      <PopoverTrigger asChild>
-                                        <FormControl>
-                                          <Button
-                                            variant="outline"
-                                            role="combobox"
-                                            className={cn(
-                                              "w-full justify-between",
-                                              !field.value &&
-                                                "text-muted-foreground"
-                                            )}
-                                            ref={(el) => {
-                                              inputRefs.current[6 + index * 4] =
-                                                el;
-                                            }}
-                                            onFocus={() =>
-                                              handleItemSelectFocus(index)
-                                            }
-                                            onKeyDown={(e) =>
-                                              handleKeyDown(e, 6 + index * 4)
-                                            }>
-                                            {field.value
-                                              ? items.find(
-                                                  (item) =>
-                                                    item._id === field.value
-                                                )?.name || "Select an item"
-                                              : "Select an item"}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                          </Button>
-                                        </FormControl>
-                                      </PopoverTrigger>
-                                      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
-                                        <Command>
-                                          <CommandInput
-                                            placeholder="Search item by name..."
-                                            autoFocus
-                                          />
-                                          <CommandEmpty>
-                                            No item found.
-                                          </CommandEmpty>
-                                          <CommandGroup>
-                                            <CommandList>
-                                              {items.map((item) => (
-                                                <CommandItem
-                                                  key={item._id}
-                                                  value={item.name}
-                                                  onSelect={() => {
-                                                    handleItemSelectAndAdvance(
-                                                      item._id,
-                                                      index
-                                                    );
-                                                  }}>
-                                                  <Check
-                                                    className={cn(
-                                                      "mr-2 h-4 w-4",
-                                                      field.value === item._id
-                                                        ? "opacity-100"
-                                                        : "opacity-0"
-                                                    )}
-                                                  />
-                                                  <span className="font-medium">
-                                                    {item.name}
-                                                  </span>
-                                                  <span className="ml-2 text-muted-foreground">
-                                                    - {item.price.toFixed(2)} tk
-                                                  </span>
-                                                </CommandItem>
-                                              ))}
-                                            </CommandList>
-                                          </CommandGroup>
-                                        </Command>
-                                      </PopoverContent>
-                                    </Popover>
-                                  </FormControl>
+                                  <Popover
+                                    open={openItemPopovers[index]}
+                                    onOpenChange={(open) => {
+                                      const newOpenStates = [
+                                        ...openItemPopovers,
+                                      ];
+                                      newOpenStates[index] = open;
+                                      setOpenItemPopovers(newOpenStates);
+                                    }}
+                                  >
+                                    <PopoverTrigger asChild>
+                                      <FormControl>
+                                        <Button
+                                          variant="outline"
+                                          role="combobox"
+                                          className={cn(
+                                            "w-full justify-between",
+                                            !field.value &&
+                                              "text-muted-foreground"
+                                          )}
+                                          ref={(el) => {
+                                            inputRefs.current[6 + index * 4] =
+                                              el;
+                                          }}
+                                          onFocus={() =>
+                                            handleItemSelectFocus(index)
+                                          }
+                                          onKeyDown={(e) =>
+                                            handleKeyDown(e, 6 + index * 4)
+                                          }
+                                        >
+                                          {field.value
+                                            ? items.find(
+                                                (item) =>
+                                                  item._id === field.value
+                                              )?.name || "Select an item"
+                                            : "Select an item"}
+                                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                      </FormControl>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                                      <Command>
+                                        <CommandInput
+                                          placeholder="Search item by name..."
+                                          autoFocus
+                                        />
+                                        <CommandEmpty>
+                                          No item found.
+                                        </CommandEmpty>
+                                        <CommandGroup>
+                                          <CommandList>
+                                            {items.map((item) => (
+                                              <CommandItem
+                                                key={item._id}
+                                                value={item.name}
+                                                onSelect={() => {
+                                                  handleItemSelectAndAdvance(
+                                                    item._id,
+                                                    index
+                                                  );
+                                                }}
+                                              >
+                                                <Check
+                                                  className={cn(
+                                                    "mr-2 h-4 w-4",
+                                                    field.value === item._id
+                                                      ? "opacity-100"
+                                                      : "opacity-0"
+                                                  )}
+                                                />
+                                                <span className="font-medium">
+                                                  {item.name}
+                                                </span>
+                                                <span className="ml-2 text-muted-foreground">
+                                                  - {item.price.toFixed(2)} tk
+                                                </span>
+                                              </CommandItem>
+                                            ))}
+                                          </CommandList>
+                                        </CommandGroup>
+                                      </Command>
+                                    </PopoverContent>
+                                  </Popover>
                                   <FormMessage />
                                 </FormItem>
                               )}
@@ -1019,7 +1031,8 @@ export function SalesForm({
                               size="icon"
                               onClick={() => removeItemRow(index)}
                               disabled={form.watch("items").length <= 1}
-                              className="text-destructive hover:text-destructive/80 hover:bg-destructive/10">
+                              className="text-destructive hover:text-destructive/80 hover:bg-destructive/10"
+                            >
                               <Trash className="h-4 w-4" />
                             </Button>
                           </div>
@@ -1051,7 +1064,8 @@ export function SalesForm({
                                 className="h-6 text-xs"
                                 onClick={() =>
                                   form.setValue("customerNotes", defaultNotes)
-                                }>
+                                }
+                              >
                                 Reset to Default
                               </Button>
                             </div>
@@ -1099,7 +1113,8 @@ export function SalesForm({
                                     "termsAndConditions",
                                     defaultTerms
                                   )
-                                }>
+                                }
+                              >
                                 Reset to Default
                               </Button>
                             </div>
@@ -1158,7 +1173,8 @@ export function SalesForm({
                               }}
                               defaultValue={field.value}
                               open={openSelectStatus}
-                              onOpenChange={setOpenSelectStatus}>
+                              onOpenChange={setOpenSelectStatus}
+                            >
                               <FormControl>
                                 <SelectTrigger
                                   className="bg-background"
@@ -1172,7 +1188,8 @@ export function SalesForm({
                                     const lastItemIndex =
                                       form.watch("items").length - 1;
                                     handleKeyDown(e, 12 + lastItemIndex * 4);
-                                  }}>
+                                  }}
+                                >
                                   <SelectValue placeholder="Select status" />
                                 </SelectTrigger>
                               </FormControl>
@@ -1232,7 +1249,8 @@ export function SalesForm({
                                   }}
                                   defaultValue={field.value}
                                   open={openDiscountType}
-                                  onOpenChange={setOpenDiscountType}>
+                                  onOpenChange={setOpenDiscountType}
+                                >
                                   <FormControl>
                                     <SelectTrigger
                                       className="h-8 text-xs bg-background"
@@ -1250,7 +1268,8 @@ export function SalesForm({
                                           e,
                                           13 + lastItemIndex * 4
                                         );
-                                      }}>
+                                      }}
+                                    >
                                       <SelectValue placeholder="Type" />
                                     </SelectTrigger>
                                   </FormControl>
@@ -1490,7 +1509,8 @@ export function SalesForm({
                                   />
                                   <label
                                     htmlFor="includePreviousDue"
-                                    className="text-sm font-medium">
+                                    className="text-sm font-medium"
+                                  >
                                     Include Previous Due
                                   </label>
                                 </div>
@@ -1519,7 +1539,8 @@ export function SalesForm({
                                 variant={
                                   includePreviousDue ? "secondary" : "outline"
                                 }
-                                className="font-medium">
+                                className="font-medium"
+                              >
                                 {selectedCustomer.due.toFixed(2)} tk
                               </Badge>
                             </div>
@@ -1553,7 +1574,8 @@ export function SalesForm({
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => setIsOpen(false)}>
+                      onClick={() => setIsOpen(false)}
+                    >
                       Cancel
                     </Button>
                     <Button
@@ -1563,7 +1585,8 @@ export function SalesForm({
                       ref={(el) => {
                         const lastItemIndex = form.watch("items").length - 1;
                         inputRefs.current[18 + lastItemIndex * 4] = el;
-                      }}>
+                      }}
+                    >
                       {isLoading ? (
                         <>
                           <span className="animate-spin mr-2">⟳</span>
