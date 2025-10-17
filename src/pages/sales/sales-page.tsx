@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Loader2,
   Search,
@@ -11,6 +11,8 @@ import {
   Trash2,
   ShoppingCart,
   ChevronDown,
+  Calendar as CalendarIcon,
+  X,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -35,6 +37,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 
 // Sales table row component for rendering each sales order
 interface SalesTableRowProps {
@@ -274,6 +282,10 @@ export function SalesPage() {
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
+  const [toDate, setToDate] = useState<Date | undefined>(undefined);
+  const [minAmount, setMinAmount] = useState("");
+  const [maxAmount, setMaxAmount] = useState("");
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 8,
@@ -289,67 +301,39 @@ export function SalesPage() {
   const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState<string | null>(null);
 
-  // Use a ref to track if we're filtering, to prevent unnecessary API calls
-  const isFilteringRef = useRef(false);
-  const lastPageRef = useRef(1);
+  // Check if any filters are active
+  const hasActiveFilters = () => {
+    return (
+      searchTerm !== "" ||
+      statusFilter !== "all" ||
+      fromDate !== undefined ||
+      toDate !== undefined ||
+      minAmount !== "" ||
+      maxAmount !== ""
+    );
+  };
 
-  // Effect to track filtering changes
-  useEffect(() => {
-    // Update the filtering ref based on current filter state
-    const isFiltering = searchTerm !== "" || statusFilter !== "all";
-
-    // Only reset pagination if we're transitioning between filtering states
-    if (isFiltering !== isFilteringRef.current) {
-      // Reset to page 1 when filter status changes
-      setPagination((prev) => ({ ...prev, page: 1 }));
-
-      // If switching from filtering to non-filtering, fetch new data
-      if (!isFiltering && isFilteringRef.current) {
-        fetchSalesOrders(1);
-      }
-    }
-
-    // Update the ref
-    isFilteringRef.current = isFiltering;
-  }, [searchTerm, statusFilter]);
-
-  // Filter sales orders based on search term and status
-  const filteredSalesOrders = Array.isArray(salesOrders)
-    ? salesOrders.filter((order) => {
-        if (!order) return false;
-
-        // Status filter
-        if (statusFilter !== "all" && order.status !== statusFilter) {
-          return false;
-        }
-
-        // Search term filter
-        const orderNumber = order.orderNumber?.toLowerCase() || "";
-        const customerName = order.customer?.customerName?.toLowerCase() || "";
-        const customerEmail = order.customer?.email?.toLowerCase() || "";
-        const reference = order.reference?.toLowerCase() || "";
-        const salesPerson = order.salesPerson?.toLowerCase() || "";
-        const searchTermLower = searchTerm.toLowerCase();
-
-        return (
-          orderNumber.includes(searchTermLower) ||
-          customerName.includes(searchTermLower) ||
-          customerEmail.includes(searchTermLower) ||
-          reference.includes(searchTermLower) ||
-          salesPerson.includes(searchTermLower)
-        );
-      })
-    : [];
-
-  const fetchSalesOrders = async (pageToFetch = pagination.page) => {
+  const fetchSalesOrders = useCallback(async (pageToFetch: number) => {
     setIsLoading(true);
     try {
-      // Important debug logging to track request
-      console.log("FETCH: Explicitly requesting page:", pageToFetch);
+      // Build query parameters
+      const queryParams = new URLSearchParams();
+      queryParams.append("page", String(pageToFetch));
+      queryParams.append("limit", String(pagination.limit));
 
-      // Make API request with explicit page number - ensure it's sent as a string
+      // Add filters if they exist
+      if (searchTerm) queryParams.append("searchTerm", searchTerm);
+      if (statusFilter && statusFilter !== "all") queryParams.append("status", statusFilter);
+      if (fromDate) queryParams.append("fromDate", fromDate.toISOString());
+      if (toDate) queryParams.append("toDate", toDate.toISOString());
+      if (minAmount) queryParams.append("minAmount", minAmount);
+      if (maxAmount) queryParams.append("maxAmount", maxAmount);
+
+      console.log("FETCH: Query params:", queryParams.toString());
+
+      // Make API request with query parameters
       const response = await apiClient.get(
-        `/sales-orders?page=${String(pageToFetch)}&limit=${pagination.limit}`
+        `/sales-orders?${queryParams.toString()}`
       );
 
       console.log("FETCH: API Response:", response.data);
@@ -411,25 +395,31 @@ export function SalesPage() {
           due: parseFloat(response.data.meta?.totalDue) || 0,
         });
       }
-
-      // Update the last page ref after a successful fetch
-      lastPageRef.current = pageToFetch;
-      console.log("FETCH: Updated lastPageRef to:", pageToFetch);
     } catch (err) {
       console.error("FETCH: Error fetching sales orders:", err);
       toast.error("Something went wrong while fetching sales orders.");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [pagination.limit, searchTerm, statusFilter, fromDate, toDate, minAmount, maxAmount]);
 
-  // Initial data fetch - only run once
+  // Effect to trigger fetch when filters change or on initial load
   useEffect(() => {
+    // Reset to page 1 and fetch when filters change
+    setPagination((prev) => ({ ...prev, page: 1 }));
     fetchSalesOrders(1);
-  }, []); // Empty dependency array for initial load only
+  }, [searchTerm, statusFilter, fromDate, toDate, minAmount, maxAmount, fetchSalesOrders]);
 
-  const handleRefresh = () => {
-    fetchSalesOrders();
+  const handleRefresh = (createdOrder?: SalesOrder) => {
+    fetchSalesOrders(pagination.page);
+    
+    // If a new order was created, automatically open print dialog
+    if (createdOrder) {
+      // Small delay to ensure the order is fully processed
+      setTimeout(() => {
+        printSalesOrder(createdOrder);
+      }, 500);
+    }
   };
 
   // Delete a sales order
@@ -679,6 +669,7 @@ export function SalesPage() {
                   <th>Item</th>
                   <th>Price</th>
                   <th>Quantity</th>
+                  <th>Discount</th>
                   <th>Total</th>
                 </tr>
               </thead>
@@ -691,6 +682,7 @@ export function SalesPage() {
                     <td>${item.item.name}</td>
                     <td>${formatCurrency(item.rate)}</td>
                     <td>${item.quantity}</td>
+                    <td>${item.discount ? formatCurrency(item.discount) : formatCurrency(0)}</td>
                     <td>${formatCurrency(item.amount)}</td>
                   </tr>
                 `
@@ -827,55 +819,8 @@ export function SalesPage() {
     }
   };
 
-  // Get summary data
-  const getSummary = () => {
-    // Use server-provided summary if available and not filtering
-    if (!(searchTerm || statusFilter !== "all")) {
-      return summary;
-    }
-
-    // Fall back to local calculation when filtering
-    if (!salesOrders.length) return { total: 0, paid: 0, due: 0, count: 0 };
-
-    return salesOrders.reduce(
-      (acc, order) => {
-        if (statusFilter !== "all" && order.status !== statusFilter) {
-          return acc;
-        }
-
-        // Search term filter
-        const orderNumber = order.orderNumber?.toLowerCase() || "";
-        const customerName = order.customer?.customerName?.toLowerCase() || "";
-        const customerEmail = order.customer?.email?.toLowerCase() || "";
-        const reference = order.reference?.toLowerCase() || "";
-        const salesPerson = order.salesPerson?.toLowerCase() || "";
-        const searchTermLower = searchTerm.toLowerCase();
-
-        if (
-          searchTerm &&
-          !(
-            orderNumber.includes(searchTermLower) ||
-            customerName.includes(searchTermLower) ||
-            customerEmail.includes(searchTermLower) ||
-            reference.includes(searchTermLower) ||
-            salesPerson.includes(searchTermLower)
-          )
-        ) {
-          return acc;
-        }
-
-        return {
-          count: acc.count + 1,
-          total: acc.total + (order.total || 0),
-          paid: acc.paid + (order.payment || 0),
-          due: acc.due + (order.due || 0),
-        };
-      },
-      { count: 0, total: 0, paid: 0, due: 0 }
-    );
-  };
-
-  const calculatedSummary = getSummary();
+  // Use server-provided summary directly
+  const calculatedSummary = summary;
 
   // Update sales order status
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
@@ -883,7 +828,7 @@ export function SalesPage() {
     try {
       await apiClient.patch(`/sales-orders/${orderId}`, { status: newStatus });
       toast.success(`Order status updated to ${newStatus}`);
-      fetchSalesOrders();
+      fetchSalesOrders(pagination.page);
     } catch (err) {
       console.error("Error updating order status:", err);
       toast.error("Failed to update order status");
@@ -892,25 +837,8 @@ export function SalesPage() {
     }
   };
 
-  // Calculate the current page's sales orders
-  const currentSalesOrders = useMemo(() => {
-    console.log("Recalculating currentSalesOrders");
-    console.log("Sales orders length:", salesOrders.length);
-    console.log("Filtered sales orders length:", filteredSalesOrders.length);
-    console.log("Search term:", searchTerm);
-    console.log("Status filter:", statusFilter);
-
-    if (searchTerm || statusFilter !== "all") {
-      // Client-side filtering and pagination
-      return filteredSalesOrders.slice(
-        (pagination.page - 1) * pagination.limit,
-        pagination.page * pagination.limit
-      );
-    }
-
-    // Server-side pagination - use the data as-is
-    return salesOrders;
-  }, [salesOrders, filteredSalesOrders, searchTerm, statusFilter, pagination]);
+  // Use server-provided data directly (server handles filtering and pagination)
+  const currentSalesOrders = salesOrders;
 
   // Check if there's any data or if we're still loading
   const hasNoData = !isLoading && salesOrders.length === 0;
@@ -926,23 +854,13 @@ export function SalesPage() {
     }
 
     const totalPages = Math.ceil(pagination.total / pagination.limit);
-    if (page > totalPages) {
+    if (page > totalPages && totalPages > 0) {
       console.log("PAGE: Page number exceeds total pages", totalPages);
       return;
     }
 
-    // Handle pagination differently based on filtering state
-    if (isFilteringRef.current) {
-      console.log("PAGE: Filtering is active, updating page state only");
-      setPagination((prev) => ({
-        ...prev,
-        page,
-      }));
-    } else {
-      console.log("PAGE: Fetching page data from server");
-      // Directly call fetchSalesOrders with the requested page number
-      fetchSalesOrders(page);
-    }
+    // Always fetch from server (server handles all filtering and pagination)
+    fetchSalesOrders(page);
   };
 
   return (
@@ -951,7 +869,7 @@ export function SalesPage() {
         <h1 className="text-2xl font-bold tracking-tight">Sales Orders</h1>
         <div className="flex items-center gap-2">
           <Button
-            onClick={handleRefresh}
+            onClick={() => handleRefresh()}
             variant="outline"
             size="sm"
             className="gap-1"
@@ -1047,60 +965,151 @@ export function SalesPage() {
       </div>
 
       {/* Filters Row */}
-      <div className="flex flex-col sm:flex-row gap-3 justify-between">
-        <div className="relative w-full sm:w-auto max-w-sm">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Search by customer, reference..."
-            className="pl-8 w-full"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+      <div className="space-y-4">
+        {/* Search and Status Filters */}
+        <div className="flex flex-col sm:flex-row gap-3 justify-between">
+          <div className="relative w-full sm:w-auto max-w-sm">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search by customer, reference..."
+              className="pl-8 w-full"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+
+          <div className="flex flex-wrap gap-2 items-center">
+            <span className="text-sm text-muted-foreground hidden sm:inline">
+              Status:
+            </span>
+            <div className="flex flex-wrap gap-1">
+              <Badge
+                variant={statusFilter === "all" ? "default" : "outline"}
+                className="cursor-pointer"
+                onClick={() => setStatusFilter("all")}>
+                All
+              </Badge>
+              <Badge
+                variant={statusFilter === "Draft" ? "default" : "outline"}
+                className="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-200"
+                onClick={() => setStatusFilter("Draft")}>
+                Draft
+              </Badge>
+              <Badge
+                variant={statusFilter === "Confirmed" ? "default" : "outline"}
+                className="cursor-pointer bg-blue-100 hover:bg-blue-200 text-blue-800 border-blue-200"
+                onClick={() => setStatusFilter("Confirmed")}>
+                Confirmed
+              </Badge>
+              <Badge
+                variant={statusFilter === "Shipped" ? "default" : "outline"}
+                className="cursor-pointer bg-amber-100 hover:bg-amber-200 text-amber-800 border-amber-200"
+                onClick={() => setStatusFilter("Shipped")}>
+                Shipped
+              </Badge>
+              <Badge
+                variant={statusFilter === "Delivered" ? "default" : "outline"}
+                className="cursor-pointer bg-green-100 hover:bg-green-200 text-green-800 border-green-200"
+                onClick={() => setStatusFilter("Delivered")}>
+                Delivered
+              </Badge>
+              <Badge
+                variant={statusFilter === "Cancelled" ? "default" : "outline"}
+                className="cursor-pointer bg-red-100 hover:bg-red-200 text-red-800 border-red-200"
+                onClick={() => setStatusFilter("Cancelled")}>
+                Cancelled
+              </Badge>
+            </div>
+          </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 items-center">
-          <span className="text-sm text-muted-foreground hidden sm:inline">
-            Status:
-          </span>
-          <div className="flex flex-wrap gap-1">
-            <Badge
-              variant={statusFilter === "all" ? "default" : "outline"}
-              className="cursor-pointer"
-              onClick={() => setStatusFilter("all")}>
-              All
-            </Badge>
-            <Badge
-              variant={statusFilter === "Draft" ? "default" : "outline"}
-              className="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-200"
-              onClick={() => setStatusFilter("Draft")}>
-              Draft
-            </Badge>
-            <Badge
-              variant={statusFilter === "Confirmed" ? "default" : "outline"}
-              className="cursor-pointer bg-blue-100 hover:bg-blue-200 text-blue-800 border-blue-200"
-              onClick={() => setStatusFilter("Confirmed")}>
-              Confirmed
-            </Badge>
-            <Badge
-              variant={statusFilter === "Shipped" ? "default" : "outline"}
-              className="cursor-pointer bg-amber-100 hover:bg-amber-200 text-amber-800 border-amber-200"
-              onClick={() => setStatusFilter("Shipped")}>
-              Shipped
-            </Badge>
-            <Badge
-              variant={statusFilter === "Delivered" ? "default" : "outline"}
-              className="cursor-pointer bg-green-100 hover:bg-green-200 text-green-800 border-green-200"
-              onClick={() => setStatusFilter("Delivered")}>
-              Delivered
-            </Badge>
-            <Badge
-              variant={statusFilter === "Cancelled" ? "default" : "outline"}
-              className="cursor-pointer bg-red-100 hover:bg-red-200 text-red-800 border-red-200"
-              onClick={() => setStatusFilter("Cancelled")}>
-              Cancelled
-            </Badge>
+        {/* Advanced Filters */}
+        <div className="flex flex-wrap gap-3">
+          {/* Date Range Filter */}
+          <div className="flex items-center gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={`justify-start text-left font-normal ${
+                    fromDate ? "border-primary" : ""
+                  }`}>
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {fromDate ? format(fromDate, "MMM dd, yyyy") : "From Date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={fromDate}
+                  onSelect={setFromDate}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={`justify-start text-left font-normal ${
+                    toDate ? "border-primary" : ""
+                  }`}>
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {toDate ? format(toDate, "MMM dd, yyyy") : "To Date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={toDate}
+                  onSelect={setToDate}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
           </div>
+
+          {/* Amount Range Filter */}
+          <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              placeholder="Min Amount"
+              className="w-32"
+              value={minAmount}
+              onChange={(e) => setMinAmount(e.target.value)}
+            />
+            <span className="text-muted-foreground">-</span>
+            <Input
+              type="number"
+              placeholder="Max Amount"
+              className="w-32"
+              value={maxAmount}
+              onChange={(e) => setMaxAmount(e.target.value)}
+            />
+          </div>
+
+          {/* Clear Filters Button */}
+          {hasActiveFilters() && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setSearchTerm("");
+                setStatusFilter("all");
+                setFromDate(undefined);
+                setToDate(undefined);
+                setMinAmount("");
+                setMaxAmount("");
+              }}
+              className="gap-1">
+              <X className="h-4 w-4" />
+              Clear Filters
+            </Button>
+          )}
         </div>
       </div>
 
@@ -1195,6 +1204,10 @@ export function SalesPage() {
                       onClick={() => {
                         setSearchTerm("");
                         setStatusFilter("all");
+                        setFromDate(undefined);
+                        setToDate(undefined);
+                        setMinAmount("");
+                        setMaxAmount("");
                       }}>
                       Clear filters
                     </Button>
@@ -1213,31 +1226,21 @@ export function SalesPage() {
             variant="outline"
             size="sm"
             onClick={() => onPageChange(pagination.page - 1)}
-            disabled={pagination.page === 1}>
+            disabled={pagination.page === 1 || isLoading}>
             Previous
           </Button>
           <span className="text-sm">
             Page {pagination.page} of{" "}
-            {searchTerm || statusFilter !== "all"
-              ? Math.max(
-                  Math.ceil(filteredSalesOrders.length / pagination.limit),
-                  1
-                )
-              : Math.max(Math.ceil(pagination.total / pagination.limit), 1)}
+            {Math.max(Math.ceil(pagination.total / pagination.limit), 1)}
           </span>
           <Button
             variant="outline"
             size="sm"
             onClick={() => onPageChange(pagination.page + 1)}
             disabled={
-              searchTerm || statusFilter !== "all"
-                ? pagination.page >=
-                  Math.max(
-                    Math.ceil(filteredSalesOrders.length / pagination.limit),
-                    1
-                  )
-                : pagination.page >=
-                  Math.max(Math.ceil(pagination.total / pagination.limit), 1)
+              pagination.page >=
+                Math.max(Math.ceil(pagination.total / pagination.limit), 1) ||
+              isLoading
             }>
             Next
           </Button>
